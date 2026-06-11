@@ -1,11 +1,14 @@
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowUpRight, FileText, UserX } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Download, FileSpreadsheet, FileText, UserX } from 'lucide-react'
+import { useState } from 'react'
 import { PatientEvolutionChart } from '../components/charts/PatientEvolutionChart'
 import { WaveLine } from '../components/brand/WaveLine'
 import { ExamTypeBadge } from '../components/ui/ExamTypeBadge'
 import { SeverityBadge } from '../components/ui/SeverityBadge'
+import { Button } from '../components/ui/Button'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { PatientDetailSkeleton } from '../components/ui/Skeleton'
+import { useToast } from '../components/ui/Toast'
 import { useBackendLabels } from '../contexts/FilterMetadataContext'
 import { useI18n } from '../contexts/I18nContext'
 import { useAsyncData } from '../hooks/useAsyncData'
@@ -15,7 +18,9 @@ import type { ExamMetrics } from '../types/patient'
 export function PatientDetailPage() {
   const { t, formatDate } = useI18n()
   const { metricLabels } = useBackendLabels()
+  const { showToast } = useToast()
   const { id } = useParams<{ id: string }>()
+  const [exporting, setExporting] = useState<'csv' | 'pdf' | null>(null)
   const { data: patient, loading, error, retry } = useAsyncData(
     () => (id ? api.getPatient(id) : Promise.resolve(null)),
     [id],
@@ -40,6 +45,23 @@ export function PatientDetailPage() {
 
   const sortedExams = [...patient.exams].sort((a, b) => b.date.localeCompare(a.date))
 
+  const handleExport = async (format: 'csv' | 'pdf') => {
+    setExporting(format)
+    try {
+      if (format === 'csv') {
+        await api.exportCsv([patient])
+        showToast(t('export.toastCsv'))
+      } else {
+        await api.exportPdf([patient])
+        showToast(t('export.toastPdf'))
+      }
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : t(format === 'csv' ? 'export.errorCsv' : 'export.errorPdf'), 'error')
+    } finally {
+      setExporting(null)
+    }
+  }
+
   return (
     <div>
       <Link to="/patients" className="inline-flex items-center gap-2 text-vellum/40 hover:text-breath text-sm mb-8 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-breath/40 rounded-lg px-1 py-0.5">
@@ -60,6 +82,30 @@ export function PatientDetailPage() {
           <p className="mt-4 text-vellum-ink/50 font-mono text-sm">
             {patient.sexe === 'M' ? t('common.man') : t('common.woman')} · {formatDate(patient.dateNaissance)}
           </p>
+          {sortedExams.length > 0 && (
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button
+                variant="ghost"
+                onClick={() => void handleExport('csv')}
+                disabled={exporting !== null}
+                loading={exporting === 'csv'}
+                loadingText={t('export.generating')}
+                icon={<FileSpreadsheet className="w-4 h-4" />}
+              >
+                {t('patientDetail.exportCsv')}
+              </Button>
+              <Button
+                variant="dream"
+                onClick={() => void handleExport('pdf')}
+                disabled={exporting !== null}
+                loading={exporting === 'pdf'}
+                loadingText={t('export.generating')}
+                icon={<Download className="w-4 h-4" />}
+              >
+                {t('patientDetail.exportPdf')}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 

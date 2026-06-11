@@ -3,7 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 import { unwrapApiEnvelope } from '../../utils/apiEnvelope';
-import { isAuthApiPath, notifySessionExpired, refreshAccessToken } from '../../services/authSession';
+import { ensureValidAccessToken, isAuthApiPath, notifySessionExpired, refreshAccessToken } from '../../services/authSession';
 import { ApiError } from './ApiError';
 import type { ApiRequestOptions } from './ApiRequestOptions';
 import type { ApiResult } from './ApiResult';
@@ -299,6 +299,10 @@ export const request = <T>(config: OpenAPIConfig, options: ApiRequestOptions): C
             const url = getUrl(config, options);
             const formData = getFormData(options);
             const body = getRequestBody(options);
+
+            if (!isAuthApiPath(url)) {
+                await ensureValidAccessToken();
+            }
 
             const runOnce = async (retried: boolean) => {
                 const headers = await getHeaders(config, options);

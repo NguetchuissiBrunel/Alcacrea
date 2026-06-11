@@ -48,20 +48,35 @@ export function PatientsGridSkeleton() {
   )
 }
 
+export function ExportSkeleton() {
+  const { t } = useI18n()
+  return (
+    <div aria-busy="true" aria-label={t('common.loading')}>
+      <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Skeleton className="h-56 rounded-[var(--radius-organic)]" />
+        <Skeleton className="h-56 rounded-[var(--radius-organic)]" />
+      </div>
+      <Skeleton className="mt-10 h-72 rounded-[var(--radius-organic)]" />
+    </div>
+  )
+}
+
 export function ProfileSkeleton() {
   const { t } = useI18n()
   return (
     <div aria-busy="true" aria-label={t('profile.loading')}>
-      <Skeleton className="h-10 w-64 mb-2" />
-      <Skeleton className="h-4 w-96 max-w-full mb-10" />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 space-y-4">
-          <Skeleton className="h-72 rounded-[var(--radius-organic)]" />
-          <Skeleton className="h-11 rounded-2xl" />
-        </div>
-        <div className="lg:col-span-2 space-y-6">
-          <Skeleton className="h-80 rounded-[var(--radius-organic)]" />
-          <Skeleton className="h-44 rounded-[var(--radius-organic)]" />
+      <div className="rounded-[var(--radius-organic)] surface-card overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,1fr)_2fr] lg:divide-x lg:divide-vellum/8">
+          <div className="p-6 sm:p-8 space-y-4 border-b lg:border-b-0 border-vellum/8">
+            <Skeleton className="h-20 w-20 rounded-2xl mx-auto" />
+            <Skeleton className="h-8 w-40 mx-auto" />
+            <Skeleton className="h-4 w-48 mx-auto" />
+            <Skeleton className="h-11 w-full rounded-2xl mt-8" />
+          </div>
+          <div className="p-5 sm:p-8 space-y-8">
+            <Skeleton className="h-64 rounded-2xl" />
+            <Skeleton className="h-52 rounded-2xl" />
+          </div>
         </div>
       </div>
     </div>

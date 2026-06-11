@@ -24,6 +24,10 @@ export const translations = {
       myProfile: 'Mon profil',
       skipToContent: 'Aller au contenu principal',
       homeAria: 'Alcacrea — Accueil',
+      collapse: 'Réduire',
+      expand: 'Élargir',
+      collapseSidebar: 'Réduire le menu latéral',
+      expandSidebar: 'Élargir le menu latéral',
     },
     theme: {
       light: 'Mode clair',
@@ -155,6 +159,9 @@ export const translations = {
       evolutionAria: 'Graphique évolution patient',
       viewCurves: 'Courbes détaillées',
       viewPatient: 'Voir la fiche patient',
+      exportCsv: 'Exporter CSV',
+      exportPdf: 'Exporter PDF',
+      exportDesc: 'Téléchargez les examens de ce patient au format CSV ou PDF.',
     },
     examDetail: {
       notFound: 'Examen introuvable',
@@ -320,6 +327,9 @@ export const translations = {
       colSatO2: 'SatO₂',
       tableFooter_one: '{{count}} ligne · colonnes alignées comme dans l\'export CSV',
       tableFooter_other: '{{count}} lignes · colonnes alignées comme dans l\'export CSV',
+      patientFilter: 'Patient',
+      allPatients: 'Tous les patients',
+      exportPatient: 'Exporter ce patient',
     },
     charts: {
       monthlyAria: "Graphique d'activité mensuelle des examens",
@@ -403,6 +413,10 @@ export const translations = {
       myProfile: 'My profile',
       skipToContent: 'Skip to main content',
       homeAria: 'Alcacrea — Home',
+      collapse: 'Collapse',
+      expand: 'Expand',
+      collapseSidebar: 'Collapse sidebar',
+      expandSidebar: 'Expand sidebar',
     },
     theme: {
       light: 'Light mode',
@@ -534,6 +548,9 @@ export const translations = {
       evolutionAria: 'Patient evolution chart',
       viewCurves: 'Detailed curves',
       viewPatient: 'View patient record',
+      exportCsv: 'Export CSV',
+      exportPdf: 'Export PDF',
+      exportDesc: 'Download this patient\'s exams as CSV or PDF.',
     },
     examDetail: {
       notFound: 'Exam not found',
@@ -699,6 +716,9 @@ export const translations = {
       colSatO2: 'SpO₂',
       tableFooter_one: '{{count}} row · columns aligned with CSV export',
       tableFooter_other: '{{count}} rows · columns aligned with CSV export',
+      patientFilter: 'Patient',
+      allPatients: 'All patients',
+      exportPatient: 'Export this patient',
     },
     charts: {
       monthlyAria: 'Monthly exam activity chart',

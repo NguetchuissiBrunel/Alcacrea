@@ -14,7 +14,7 @@ export function MobileHeader() {
     '?'
 
   return (
-    <header className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 safe-area-pt bg-ink-soft/95 backdrop-blur-md border-b border-vellum/8">
+    <header className="app-mobile-header md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 safe-area-pt">
       <Link
         to="/"
         className="focus:outline-none focus-visible:ring-2 focus-visible:ring-breath/40 rounded-lg"

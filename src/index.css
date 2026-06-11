@@ -362,6 +362,34 @@ html.dark .dossier-surface {
 }
 
 /* ── Navigation ── */
+:root {
+  --sidebar-width: 13rem;
+}
+
+.app-sidebar {
+  background: var(--color-ink-soft);
+  border-right: 1px solid color-mix(in srgb, var(--color-vellum) 10%, transparent);
+  box-shadow: 4px 0 24px color-mix(in srgb, var(--color-ink) 8%, transparent);
+}
+
+.app-panel {
+  background: var(--color-ink-soft);
+}
+
+.app-mobile-header,
+.app-mobile-nav {
+  background: var(--color-ink-soft);
+  border-color: color-mix(in srgb, var(--color-vellum) 10%, transparent);
+}
+
+.app-mobile-header {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-vellum) 10%, transparent);
+}
+
+.app-mobile-nav {
+  border-top: 1px solid color-mix(in srgb, var(--color-vellum) 10%, transparent);
+}
+
 .nav-active-glow {
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--color-breath) 15%, transparent),

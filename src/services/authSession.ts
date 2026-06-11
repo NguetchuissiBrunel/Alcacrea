@@ -4,6 +4,7 @@ import { unwrapApiEnvelope } from '../utils/apiEnvelope'
 import type { AuthUser } from './authApi'
 
 export const REFRESH_TOKEN_KEY = 'alcacrea-refresh-token'
+export const LOGIN_EMAIL_KEY = 'alcacrea-login-email'
 const USER_CACHE_KEY = 'alcacrea-user-cache'
 
 type SessionExpiredHandler = () => void
@@ -22,7 +23,21 @@ export function getRefreshToken(): string | null {
 export function clearAuthSession() {
   setAuthToken(null)
   localStorage.removeItem(REFRESH_TOKEN_KEY)
-  localStorage.removeItem('alcacrea-user-cache')
+  localStorage.removeItem(USER_CACHE_KEY)
+  localStorage.removeItem(LOGIN_EMAIL_KEY)
+}
+
+export function storeLoginEmail(email: string) {
+  const normalized = email.trim()
+  if (normalized) localStorage.setItem(LOGIN_EMAIL_KEY, normalized)
+}
+
+export function readLoginEmail(): string | null {
+  return localStorage.getItem(LOGIN_EMAIL_KEY)
+}
+
+function hasProfileData(user: AuthUser): boolean {
+  return !!(user.email.trim() || user.fullName.trim() || user.prenom.trim() || user.nom.trim())
 }
 
 function decodeJwtExpiry(token: string): number | null {
@@ -37,6 +52,7 @@ function decodeJwtExpiry(token: string): number | null {
 }
 
 export function cacheAuthUser(user: AuthUser) {
+  if (!hasProfileData(user)) return
   try {
     localStorage.setItem(USER_CACHE_KEY, JSON.stringify(user))
   } catch {
@@ -48,7 +64,9 @@ export function readCachedAuthUser(): AuthUser | null {
   try {
     const raw = localStorage.getItem(USER_CACHE_KEY)
     if (!raw) return null
-    return JSON.parse(raw) as AuthUser
+    const user = JSON.parse(raw) as AuthUser
+    if (!hasProfileData(user)) return null
+    return user
   } catch {
     return null
   }
@@ -84,15 +102,15 @@ function extractToken(res: unknown): string | null {
   if (!res || typeof res !== 'object') return null
   const r = res as Record<string, unknown>
 
-  for (const value of [r.access_token, r.token, r.accessToken, r.jwt, r.auth_token]) {
+  for (const value of [r.access_token, r.token, r.accessToken, r.access, r.jwt, r.auth_token]) {
     if (typeof value === 'string' && value.length > 0) return value
   }
 
-  for (const key of ['data', 'tokens', 'auth', 'result']) {
+  for (const key of ['data', 'tokens', 'auth', 'result', 'session']) {
     const nested = r[key]
     if (nested && typeof nested === 'object') {
       const n = nested as Record<string, unknown>
-      const token = n.access_token ?? n.token ?? n.accessToken
+      const token = n.access_token ?? n.token ?? n.accessToken ?? n.access ?? n.jwt
       if (typeof token === 'string' && token.length > 0) return token
     }
   }
@@ -104,15 +122,15 @@ function extractRefreshToken(res: unknown): string | null {
   if (!res || typeof res !== 'object') return null
   const r = res as Record<string, unknown>
 
-  for (const value of [r.refresh_token, r.refreshToken]) {
+  for (const value of [r.refresh_token, r.refreshToken, r.refresh]) {
     if (typeof value === 'string' && value.length > 0) return value
   }
 
-  for (const key of ['data', 'tokens', 'auth', 'result']) {
+  for (const key of ['data', 'tokens', 'auth', 'result', 'session']) {
     const nested = r[key]
     if (nested && typeof nested === 'object') {
       const n = nested as Record<string, unknown>
-      const refresh = n.refresh_token ?? n.refreshToken
+      const refresh = n.refresh_token ?? n.refreshToken ?? n.refresh
       if (typeof refresh === 'string' && refresh.length > 0) return refresh
     }
   }
@@ -120,11 +138,19 @@ function extractRefreshToken(res: unknown): string | null {
   return null
 }
 
-export function storeAuthTokens(res: unknown) {
-  const token = extractToken(res)
+/** Extrait access + refresh depuis la réponse (payload déplié et enveloppe brute). */
+export function storeAuthTokens(res: unknown, raw?: unknown) {
+  const sources = [res, raw].filter(Boolean)
+  let token: string | null = null
+  let refresh: string | null = null
+
+  for (const source of sources) {
+    token ??= extractToken(source)
+    refresh ??= extractRefreshToken(source)
+  }
+
   if (!token) throw new Error('Token manquant dans la réponse')
   setAuthToken(token)
-  const refresh = extractRefreshToken(res)
   if (refresh) localStorage.setItem(REFRESH_TOKEN_KEY, refresh)
 }
 
@@ -164,7 +190,8 @@ export async function refreshAccessToken(): Promise<boolean> {
       if (!access) return false
 
       setAuthToken(access)
-      const rotated = extractRefreshToken(payload) ?? extractRefreshToken(data)
+      const rotated =
+        extractRefreshToken(payload) ?? extractRefreshToken(data)
       if (rotated) localStorage.setItem(REFRESH_TOKEN_KEY, rotated)
       return true
     } catch {
@@ -177,22 +204,22 @@ export async function refreshAccessToken(): Promise<boolean> {
   return refreshInFlight
 }
 
-export async function ensureValidAccessToken(): Promise<boolean> {
+export async function ensureValidAccessToken(options?: { forceRefresh?: boolean }): Promise<boolean> {
   if (!hasStoredSession()) return false
 
   const token = getAuthToken()
-  if (token && !isAccessTokenExpired()) {
-    if (isAccessTokenStale() && getRefreshToken() && !refreshInFlight) {
-      void refreshAccessToken()
-    }
-    return true
-  }
+  const mustRefresh =
+    options?.forceRefresh ||
+    !token ||
+    isAccessTokenExpired() ||
+    (isAccessTokenStale() && !!getRefreshToken())
 
-  if (getRefreshToken()) {
+  if (mustRefresh && getRefreshToken()) {
     const refreshed = await refreshAccessToken()
     if (refreshed) return true
   }
 
+  if (token && !isAccessTokenExpired()) return true
   return !!getAuthToken()
 }
 
@@ -221,6 +248,9 @@ export async function authenticatedFetch(
 }
 
 export function notifySessionExpired() {
+  if (!hasStoredSession()) return
+  const token = getAuthToken()
+  if (token && !isAccessTokenExpired()) return
   clearAuthSession()
   onSessionExpired?.()
 }

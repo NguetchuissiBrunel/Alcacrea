@@ -177,61 +177,74 @@ async function findExamRefByPdfFileId(
   return undefined
 }
 
-/** Charge les examens via les PDF parsés (status=done) + détail API. */
-async function fetchRowsFromParsedPdfs(): Promise<BackendExamRow[]> {
-  const pdfs = await listAllPdfJobs(100).catch(() => [] as Awaited<ReturnType<typeof listAllPdfJobs>>)
-  const done = pdfs.filter((p) => p.status === PDFStatus.DONE || p.status === 'done')
-  const rows: BackendExamRow[] = []
+/** Charge les examens via les PDF parsés (status=done). */
+async function buildRowFromPdf(pdf: {
+  id: number
+  fileName: string
+  pdfType?: string
+  examRef?: ReturnType<typeof parseExamRefFromStatus>
+}): Promise<BackendExamRow | null> {
+  let examRef = pdf.examRef
+  let statusRow: Record<string, unknown> = {}
 
-  for (const pdf of done) {
-    let examRef = pdf.examRef
-    let statusRow: Record<string, unknown> = {}
-
+  if (!examRef) {
     try {
       statusRow = normalizeExamRawRow(
         (await PdfUploadService.getPdfStatusApiV1PdfStatusPdfFileIdGet(pdf.id)) as Record<string, unknown>,
       )
-      if (!examRef) {
-        examRef = parseExamRefFromStatus({
-          ...statusRow,
-          pdf_type: statusRow.pdf_type ?? pdf.pdfType,
-          filename: statusRow.filename ?? statusRow.file_name ?? pdf.fileName,
-        })
-      }
+      examRef = parseExamRefFromStatus({
+        ...statusRow,
+        pdf_type: statusRow.pdf_type ?? pdf.pdfType,
+        filename: statusRow.filename ?? statusRow.file_name ?? pdf.fileName,
+      })
     } catch (err) {
       rethrowUnlessSafe(err)
     }
-
-    if (!examRef) {
-      examRef = await findExamRefByPdfFileId(pdf.id, String(statusRow.pdf_type ?? pdf.pdfType ?? ''))
-    }
-
-    if (!examRef) continue
-
-    const pushRow = (raw: Record<string, unknown>) => {
-      if (pdf.fileName) raw.filename = raw.filename ?? raw.file_name ?? pdf.fileName
-      raw.pdf_file_id = raw.pdf_file_id ?? pdf.id
-      rows.push({ type: examRef!.type, id: examRef!.id, raw: normalizeExamRawRow(raw) })
-    }
-
-    try {
-      const detail = await fetchBackendExam(examRef.type, examRef.id)
-      if (detail && typeof detail === 'object') {
-        pushRow(detail as Record<string, unknown>)
-      } else {
-        pushRow(fallbackExamRaw(examRef, pdf, statusRow))
-      }
-    } catch (err) {
-      if (isAuthApiError(err)) throw err
-      pushRow(fallbackExamRaw(examRef, pdf, statusRow))
-    }
   }
 
-  return dedupeExamRows(rows)
+  if (!examRef) {
+    examRef = await findExamRefByPdfFileId(pdf.id, String(statusRow.pdf_type ?? pdf.pdfType ?? ''))
+  }
+  if (!examRef) return null
+
+  const toRow = (raw: Record<string, unknown>): BackendExamRow => {
+    if (pdf.fileName) raw.filename = raw.filename ?? raw.file_name ?? pdf.fileName
+    raw.pdf_file_id = raw.pdf_file_id ?? pdf.id
+    return { type: examRef!.type, id: examRef!.id, raw: normalizeExamRawRow(raw) }
+  }
+
+  if (examRef.patientNom || pdf.examRef) {
+    return toRow(fallbackExamRaw(examRef, pdf, statusRow))
+  }
+
+  try {
+    const detail = await fetchBackendExam(examRef.type, examRef.id)
+    if (detail && typeof detail === 'object') {
+      return toRow(detail as Record<string, unknown>)
+    }
+  } catch (err) {
+    if (isAuthApiError(err)) throw err
+  }
+
+  return toRow(fallbackExamRaw(examRef, pdf, statusRow))
+}
+
+async function fetchRowsFromParsedPdfs(existingKeys?: Set<string>): Promise<BackendExamRow[]> {
+  const pdfs = await listAllPdfJobs(100).catch(() => [] as Awaited<ReturnType<typeof listAllPdfJobs>>)
+  const done = pdfs.filter((p) => p.status === PDFStatus.DONE || p.status === 'done')
+
+  const pending = done.filter((pdf) => {
+    if (!pdf.examRef) return true
+    const key = `${pdf.examRef.type}:${pdf.examRef.id}`
+    return !existingKeys?.has(key)
+  })
+
+  const rows = await Promise.all(pending.map((pdf) => buildRowFromPdf(pdf)))
+  return dedupeExamRows(rows.filter((row): row is BackendExamRow => row !== null))
 }
 
 let cache: { patients: Patient[]; rows: BackendExamRow[]; at: number } | null = null
-const CACHE_MS = 15_000
+const CACHE_MS = 60_000
 
 export function invalidateBackendCache() {
   cache = null
@@ -251,7 +264,8 @@ export async function fetchAllExamRows(
   let rows = dedupeExamRows(chunks.flat())
 
   if (!hasActiveFilters(filters)) {
-    const pdfRows = await fetchRowsFromParsedPdfs()
+    const existingKeys = new Set(rows.map((row) => `${row.type}:${row.id}`))
+    const pdfRows = await fetchRowsFromParsedPdfs(existingKeys)
     rows = dedupeExamRows([...rows, ...pdfRows])
   }
 

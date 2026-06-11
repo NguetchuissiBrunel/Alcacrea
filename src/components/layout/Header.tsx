@@ -5,28 +5,18 @@ import { useI18n } from '../../contexts/I18nContext'
 interface HeaderProps {
   title: string
   subtitle?: string
+  /** Moins d'espace avant le contenu (fiches denses) */
+  compact?: boolean
 }
 
-export function Header({ title, subtitle }: HeaderProps) {
+export function Header({ title, subtitle, compact = false }: HeaderProps) {
   const { t } = useI18n()
   const titleParts = title.split(' ')
 
   return (
-    <header className="mb-6 sm:mb-8 md:mb-12 animate-fade-up">
-      <div className="hidden md:flex items-center gap-5 py-3 px-4 -mx-4 mb-6 rounded-2xl bg-ink-soft/60 border border-vellum/5">
-        <Logo size={28} />
-        <div className="flex-1" />
-        <div className="text-right shrink-0">
-          <p className="text-[10px] font-sans font-semibold tracking-[0.18em] uppercase text-breath">
-            {t('brand.clinic')}
-          </p>
-          <p className="text-[10px] font-sans font-medium tracking-[0.12em] uppercase text-clinical-muted mt-0.5">
-            {t('brand.clinicSub')}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex md:hidden items-center gap-3 py-2.5 px-3 mb-4 rounded-xl bg-ink-soft/60 border border-vellum/5">
+    <header className={`animate-fade-up ${compact ? 'mb-6 md:mb-8' : 'mb-6 sm:mb-8 md:mb-12'}`}>
+      {/* Bandeau clinique : mobile uniquement (sidebar = marque sur desktop) */}
+      <div className="flex md:hidden items-center gap-3 py-2.5 px-3 mb-4 rounded-xl app-panel border border-vellum/8">
         <Logo size={22} />
         <div className="min-w-0 flex-1">
           <p className="text-[9px] font-sans font-semibold tracking-[0.14em] uppercase text-breath truncate">
@@ -38,7 +28,7 @@ export function Header({ title, subtitle }: HeaderProps) {
         </div>
       </div>
 
-      <h1 className="title-serif text-3xl sm:text-4xl md:text-[3.5rem] text-vellum break-words">
+      <h1 className={`title-serif text-vellum break-words ${compact ? 'text-3xl sm:text-4xl' : 'text-3xl sm:text-4xl md:text-[3.5rem]'}`}>
         {titleParts.length > 1 ? (
           <>
             {titleParts.slice(0, -1).join(' ')}{' '}

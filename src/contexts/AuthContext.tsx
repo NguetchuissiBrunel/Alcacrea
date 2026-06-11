@@ -10,6 +10,7 @@ import {
 import { ApiError } from '../lib/core/ApiError'
 import type { AuthUser } from '../services/authApi'
 import * as authApi from '../services/authApi'
+import { enrichAuthUser, isProfileUsable } from '../services/authApi'
 import {
   cacheAuthUser,
   clearAuthSession,
@@ -37,14 +38,33 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 let refreshUserInFlight: Promise<void> | null = null
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() =>
-    hasStoredSession() ? readCachedAuthUser() : null,
-  )
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    if (!hasStoredSession()) return null
+    const cached = readCachedAuthUser()
+    return cached ? enrichAuthUser(cached) : null
+  })
   const [loading, setLoading] = useState(true)
 
   const applyUser = useCallback((me: AuthUser | null) => {
-    setUser(me)
-    if (me) cacheAuthUser(me)
+    if (!me) {
+      setUser(null)
+      return
+    }
+    const enriched = enrichAuthUser(me)
+    const cached = readCachedAuthUser()
+    const merged: AuthUser = cached
+      ? {
+          id: enriched.id ?? cached.id,
+          email: enriched.email.trim() || cached.email,
+          fullName: enriched.fullName.trim() || cached.fullName,
+          prenom: enriched.prenom.trim() || cached.prenom,
+          nom: enriched.nom.trim() || cached.nom,
+          role: enriched.role ?? cached.role,
+          createdAt: enriched.createdAt ?? cached.createdAt,
+        }
+      : enriched
+    setUser(merged)
+    if (isProfileUsable(merged)) cacheAuthUser(merged)
   }, [])
 
   const refreshUser = useCallback(async () => {
@@ -56,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const hasSession = await ensureValidAccessToken()
+      const hasSession = await ensureValidAccessToken({ forceRefresh: true })
       if (!hasSession) {
         clearAuthSession()
         setUser(null)
@@ -68,12 +88,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         applyUser(me)
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) {
+          const retried = await ensureValidAccessToken({ forceRefresh: true })
+          if (retried) {
+            try {
+              const me = await authApi.getMe()
+              applyUser(me)
+              return
+            } catch {
+              /* fall through */
+            }
+          }
+          const cached = readCachedAuthUser()
+          if (cached && hasStoredSession()) {
+            setUser(enrichAuthUser(cached))
+            return
+          }
           clearAuthSession()
           setUser(null)
           return
         }
         const cached = readCachedAuthUser()
-        if (cached) setUser(cached)
+        if (cached) setUser(enrichAuthUser(cached))
       }
     })().finally(() => {
       refreshUserInFlight = null
