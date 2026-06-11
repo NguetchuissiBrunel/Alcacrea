@@ -29,7 +29,13 @@ export function useAsyncData<T>(
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Une erreur est survenue')
+          setError(
+            err instanceof Error
+              ? err.message.includes('Unauthorized')
+                ? 'Session expirée — reconnectez-vous'
+                : err.message
+              : 'Une erreur est survenue',
+          )
         }
       })
       .finally(() => {

@@ -1,4 +1,4 @@
-import { format, parseISO } from 'date-fns'
+import { format, isValid, parseISO } from 'date-fns'
 import { enUS, fr } from 'date-fns/locale'
 import type { ExamMetrics, Severity } from '../types/patient'
 import { getThemeColor } from './themeColors'
@@ -6,12 +6,17 @@ import { getThemeColor } from './themeColors'
 const dateLocales = { fr, en: enUS }
 
 export function formatDate(date: string, locale: 'fr' | 'en' = 'fr'): string {
-  return format(parseISO(date), 'd MMM yyyy', { locale: dateLocales[locale] })
+  if (!date?.trim()) return '—'
+  const parsed = parseISO(date)
+  if (!isValid(parsed)) return '—'
+  return format(parsed, 'd MMM yyyy', { locale: dateLocales[locale] })
 }
 
 export function formatMonth(ym: string, locale: 'fr' | 'en' = 'fr'): string {
+  if (!ym?.trim() || !ym.includes('-')) return '—'
   const [year, month] = ym.split('-')
   const date = new Date(Number(year), Number(month) - 1)
+  if (!isValid(date)) return '—'
   return format(date, 'MMM yy', { locale: dateLocales[locale] })
 }
 

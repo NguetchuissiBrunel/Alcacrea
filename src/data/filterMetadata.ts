@@ -2,8 +2,7 @@ import { translations, type Locale } from '../i18n/translations'
 import type { FilterMetadata } from '../types/metadata'
 import { FALLBACK_FILTER_DEFAULTS } from '../types/metadata'
 
-/** Simule la réponse backend `GET /filters` localisée via Accept-Language. */
-export function buildMockFilterMetadata(locale: Locale): FilterMetadata {
+export function buildFilterMetadata(locale: Locale): FilterMetadata {
   const tr = translations[locale]
 
   return {

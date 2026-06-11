@@ -1,5 +1,5 @@
-import { buildMockFilterMetadata } from '../data/mockFilterMetadata'
-import { mockPatients } from '../data/mockPatients'
+import { API_PAGE_LIMIT } from '../config/api'
+import { buildFilterMetadata } from '../data/filterMetadata'
 import type { Locale } from '../i18n/translations'
 import type { FilterMetadata } from '../types/metadata'
 import type {
@@ -9,35 +9,20 @@ import type {
   PatientFilters,
   Severity,
 } from '../types/patient'
-import {
-  buildMockScatter,
-  buildMockSeverityBreakdown,
-  buildMockTrends,
-  getMockSyncStatus,
-} from '../data/mockAnalytics'
-import {
-  getMockExamCurvesMeta,
-  getMockFlowVolume,
-  getMockRespiratoryEvents,
-  getMockSleepStages,
-  getMockSpo2Curve,
-} from '../data/mockCurves'
 import type {
   AnalyticsScatter,
   AnalyticsSeverityBreakdown,
   AnalyticsTrends,
   SyncStatus,
 } from '../types/analytics'
-import type {
-  ExamCurvesMeta,
-  FlowVolumeData,
-  RespiratoryEventsData,
-  SleepStagesData,
-  Spo2CurveData,
-} from '../types/curves'
+import type { ExamCurvesMeta } from '../types/curves'
 import { downloadFile } from '../utils/format'
 import { generatePatientsPdf } from '../utils/exportPdf'
-import { filterPatients } from '../utils/patientFilters'
+import {
+  buildScatterFromPatients,
+  buildSeverityBreakdownFromPatients,
+  buildTrendsFromPatients,
+} from '../utils/analyticsFromPatients'
 import {
   checkBackendHealth,
   fetchAllExamRows,
@@ -49,37 +34,16 @@ import { fetchBackendExam } from './backendExamApi'
 import { extractCurvesFromParsedData } from '../utils/curveExtractor'
 import type { BackendExamType } from '../types/backendExam'
 
-const API_BASE = import.meta.env.VITE_API_URL ?? '/api'
-const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
-
 function parseBackendExamId(examId: string): { type: BackendExamType; id: number } | null {
   const m = examId.match(/^b:(polysomnographie|polygraphie-ppc|efr-standard|efr-avancee):(\d+)$/)
   if (!m) return null
   return { type: m[1] as BackendExamType, id: Number(m[2]) }
 }
 
-async function fetchApi<T>(
-  path: string,
-  options?: RequestInit & { locale?: Locale },
-): Promise<T> {
-  const { locale, ...init } = options ?? {}
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(locale ? { 'Accept-Language': locale } : {}),
-      ...init.headers,
-    },
-    ...init,
-  })
-  if (!res.ok) throw new Error(`API ${res.status}: ${path}`)
-  return res.json() as Promise<T>
-}
-
 export function getStatsFromPatients(
   patients: Patient[],
   severityLabelMap: Record<string, string>,
 ): DashboardStats {
-  const severityLabels = severityLabelMap
   const allExams = patients.flatMap((p) => p.exams)
   const iahExams = allExams.filter((e) => e.metrics.iah != null)
 
@@ -118,7 +82,7 @@ export function getStatsFromPatients(
     severityDistribution: (Object.keys(severityCounts) as Severity[]).map((s) => ({
       severity: s,
       count: severityCounts[s],
-      label: severityLabels[s] ?? s,
+      label: severityLabelMap[s] ?? s,
     })),
   }
 }
@@ -155,39 +119,37 @@ function buildCsv(patients: Patient[]): string {
   return [headers, ...rows].map((r) => r.join(';')).join('\n')
 }
 
+function severityLabelsFromLocale(locale: Locale): Record<Severity, string> {
+  const { severities } = buildFilterMetadata(locale)
+  return Object.fromEntries(
+    severities.filter((s) => s.value !== 'all').map((s) => [s.value, s.label]),
+  ) as Record<Severity, string>
+}
+
 export const api = {
   async getFilterMetadata(locale: Locale): Promise<FilterMetadata> {
-    return buildMockFilterMetadata(locale)
+    return buildFilterMetadata(locale)
   },
 
   async getPatients(filters?: PatientFilters): Promise<Patient[]> {
-    if (USE_MOCK) {
-      const data = filters ? filterPatients(mockPatients, filters) : mockPatients
-      return Promise.resolve(data)
-    }
     return fetchBackendPatients(filters)
   },
 
   async getPatient(id: string): Promise<Patient | null> {
-    if (USE_MOCK) return mockPatients.find((p) => p.id === id) ?? null
     return fetchBackendPatient(id)
   },
 
-  async getDashboardStats(locale: Locale): Promise<DashboardStats> {
-    const { severities } = buildMockFilterMetadata(locale)
-    const labels = Object.fromEntries(
-      severities.filter((s) => s.value !== 'all').map((s) => [s.value, s.label]),
-    ) as Record<Severity, string>
-    const patients = USE_MOCK ? mockPatients : await fetchBackendPatients()
+  async getDashboardStats(locale: Locale, force = false): Promise<DashboardStats> {
+    const labels = severityLabelsFromLocale(locale)
+    const patients = await fetchBackendPatients(undefined, force)
     const stats = getStatsFromPatients(patients, labels)
-    const healthy = USE_MOCK ? true : await checkBackendHealth()
+    const healthy = await checkBackendHealth()
     return { ...stats, lastSyncAt: new Date().toISOString(), dataFreshness: healthy ? 'ok' : 'error' }
   },
 
-  async getSyncStatus(): Promise<SyncStatus> {
-    if (USE_MOCK) return getMockSyncStatus()
+  async getSyncStatus(force = false): Promise<SyncStatus> {
     const healthy = await checkBackendHealth()
-    const rows = await fetchAllExamRows(200).catch(() => [])
+    const rows = await fetchAllExamRows(API_PAGE_LIMIT, undefined, force).catch(() => [])
     return {
       status: healthy ? 'idle' : 'error',
       lastSyncAt: new Date().toISOString(),
@@ -196,45 +158,33 @@ export const api = {
   },
 
   async getAnalyticsStats(filters: PatientFilters, locale: Locale): Promise<DashboardStats> {
-    const { severities } = buildMockFilterMetadata(locale)
-    const labels = Object.fromEntries(
-      severities.filter((s) => s.value !== 'all').map((s) => [s.value, s.label]),
-    ) as Record<Severity, string>
-    const patients = USE_MOCK
-      ? filterPatients(mockPatients, filters)
-      : await fetchBackendPatients(filters)
+    const labels = severityLabelsFromLocale(locale)
+    const patients = await fetchBackendPatients(filters)
     return getStatsFromPatients(patients, labels)
   },
 
   async getAnalyticsScatter(filters: PatientFilters): Promise<AnalyticsScatter> {
-    const patients = USE_MOCK
-      ? filterPatients(mockPatients, filters)
-      : await fetchBackendPatients(filters)
-    return buildMockScatter(patients)
+    const patients = await fetchBackendPatients(filters)
+    return buildScatterFromPatients(patients)
   },
 
   async getAnalyticsTrends(
     filters: PatientFilters,
     metric: 'iah' | 'ido' | 'satO2Min' | 'vems' = 'iah',
   ): Promise<AnalyticsTrends> {
-    const patients = USE_MOCK
-      ? filterPatients(mockPatients, filters)
-      : await fetchBackendPatients(filters)
-    return buildMockTrends(patients, metric)
+    const patients = await fetchBackendPatients(filters)
+    return buildTrendsFromPatients(patients, metric)
   },
 
   async getAnalyticsSeverityBreakdown(
     filters: PatientFilters,
     locale: Locale,
   ): Promise<AnalyticsSeverityBreakdown> {
-    const patients = USE_MOCK
-      ? filterPatients(mockPatients, filters)
-      : await fetchBackendPatients(filters)
-    return buildMockSeverityBreakdown(patients, locale)
+    const patients = await fetchBackendPatients(filters)
+    return buildSeverityBreakdownFromPatients(patients, locale)
   },
 
   async getExamCurves(examId: string): Promise<ExamCurvesMeta | null> {
-    if (USE_MOCK) return getMockExamCurvesMeta(examId)
     const ref = parseBackendExamId(examId)
     if (!ref) return null
     const data = await fetchBackendExam(ref.type, ref.id)
@@ -252,26 +202,6 @@ export const api = {
     }
   },
 
-  async getSpo2Curve(examId: string): Promise<Spo2CurveData | null> {
-    if (USE_MOCK) return getMockSpo2Curve(examId)
-    return null
-  },
-
-  async getSleepStages(examId: string): Promise<SleepStagesData | null> {
-    if (USE_MOCK) return getMockSleepStages(examId)
-    return null
-  },
-
-  async getRespiratoryEvents(examId: string): Promise<RespiratoryEventsData | null> {
-    if (USE_MOCK) return getMockRespiratoryEvents(examId)
-    return null
-  },
-
-  async getFlowVolume(examId: string): Promise<FlowVolumeData | null> {
-    if (USE_MOCK) return getMockFlowVolume(examId)
-    return null
-  },
-
   async exportCsv(patients: Patient[]): Promise<void> {
     const csv = buildCsv(patients)
     downloadFile(csv, `alcacrea-export-${new Date().toISOString().slice(0, 10)}.csv`)
@@ -282,6 +212,6 @@ export const api = {
   },
 
   invalidateCache() {
-    if (!USE_MOCK) invalidateBackendCache()
+    invalidateBackendCache()
   },
 }

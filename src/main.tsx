@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
 import { FilterMetadataProvider } from './contexts/FilterMetadataContext'
 import { I18nProvider } from './contexts/I18nContext'
 import { ThemeProvider } from './contexts/ThemeContext'
@@ -15,13 +16,15 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <I18nProvider>
-        <FilterMetadataProvider>
-          <ThemeProvider>
-            <ToastProvider>
-              <App />
-            </ToastProvider>
-          </ThemeProvider>
-        </FilterMetadataProvider>
+        <AuthProvider>
+          <FilterMetadataProvider>
+            <ThemeProvider>
+              <ToastProvider>
+                <App />
+              </ToastProvider>
+            </ThemeProvider>
+          </FilterMetadataProvider>
+        </AuthProvider>
       </I18nProvider>
     </BrowserRouter>
   </StrictMode>,

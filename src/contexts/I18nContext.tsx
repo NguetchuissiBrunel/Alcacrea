@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { enUS, fr, type Locale as DateFnsLocale } from 'date-fns/locale'
-import { format, parseISO } from 'date-fns'
+import { format, isValid, parseISO } from 'date-fns'
 import { translations, type Locale } from '../i18n/translations'
 
 const STORAGE_KEY = 'alcacrea-locale'
@@ -67,14 +67,22 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const dateLocale = locale === 'fr' ? fr : enUS
 
   const formatDate = useCallback(
-    (date: string) => format(parseISO(date), 'd MMM yyyy', { locale: dateLocale }),
+    (date: string) => {
+      if (!date?.trim()) return '—'
+      const parsed = parseISO(date)
+      if (!isValid(parsed)) return '—'
+      return format(parsed, 'd MMM yyyy', { locale: dateLocale })
+    },
     [dateLocale],
   )
 
   const formatMonth = useCallback(
     (ym: string) => {
+      if (!ym?.trim() || !ym.includes('-')) return '—'
       const [year, month] = ym.split('-')
-      return format(new Date(Number(year), Number(month) - 1), 'MMM yy', { locale: dateLocale })
+      const parsed = new Date(Number(year), Number(month) - 1)
+      if (!isValid(parsed)) return '—'
+      return format(parsed, 'MMM yy', { locale: dateLocale })
     },
     [dateLocale],
   )

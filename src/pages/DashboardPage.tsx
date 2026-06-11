@@ -1,4 +1,5 @@
-import { AlertTriangle, Moon, Stethoscope, Users } from 'lucide-react'
+import { useCallback, useEffect } from 'react'
+import { AlertTriangle, Moon, RefreshCw, Stethoscope, Users } from 'lucide-react'
 import { MonthlyChart } from '../components/charts/MonthlyChart'
 import { SeverityChart } from '../components/charts/SeverityChart'
 import { Header } from '../components/layout/Header'
@@ -16,22 +17,48 @@ export function DashboardPage() {
   const { t, locale } = useI18n()
   const { examTypeLabels } = useBackendLabels()
   const { data: stats, loading, error, retry } = useAsyncData(
-    () => api.getDashboardStats(locale),
+    () => api.getDashboardStats(locale, true),
     [locale],
   )
-  const { data: syncStatus } = useAsyncData(() => api.getSyncStatus(), [])
+  const { data: syncStatus, retry: retrySync } = useAsyncData(
+    () => api.getSyncStatus(true),
+    [],
+  )
+
+  const refreshAll = useCallback(() => {
+    api.invalidateCache()
+    retry()
+    retrySync()
+  }, [retry, retrySync])
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refreshAll()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [refreshAll])
 
   return (
     <>
       <Header title={t('dashboard.title')} subtitle={t('dashboard.subtitle')} />
 
-      {syncStatus && stats && (
-        <div className="mb-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        {syncStatus && stats && (
           <SyncStatusBadge status={syncStatus} dataFreshness={stats.dataFreshness} />
-        </div>
-      )}
+        )}
+        <button
+          type="button"
+          onClick={refreshAll}
+          disabled={loading}
+          className="inline-flex items-center gap-2 text-xs font-mono text-vellum/50 hover:text-breath disabled:opacity-40 ml-auto"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          {t('common.retry')}
+        </button>
+      </div>
 
-      {loading && <DashboardSkeleton />}
+      {loading && !stats && <DashboardSkeleton />}
 
       {error && <ErrorMessage message={error} onRetry={retry} />}
 

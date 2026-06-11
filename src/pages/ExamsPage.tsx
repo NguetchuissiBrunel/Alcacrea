@@ -18,8 +18,6 @@ import type { BackendExamType } from '../types/backendExam'
 import type { PatientFilters } from '../types/patient'
 import { apiErrorMessage } from '../services/authApi'
 
-const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
-
 export function ExamsPage() {
   const { t, formatDate } = useI18n()
   const { showToast } = useToast()
@@ -27,7 +25,7 @@ export function ExamsPage() {
   const [deleting, setDeleting] = useState<string | null>(null)
 
   const { data: rows, loading, error, retry } = useAsyncData(
-    () => (USE_MOCK ? Promise.resolve([]) : fetchAllExamRows(200, filters)),
+    () => fetchAllExamRows(undefined, filters),
     [filters],
   )
 
@@ -56,14 +54,10 @@ export function ExamsPage() {
       <Header title={t('exams.title')} subtitle={t('exams.subtitle')} />
       <FilterBar filters={filters} onChange={setFilters} />
 
-      {USE_MOCK && (
-        <p className="mt-6 text-vellum/40 text-sm font-mono">{t('exams.mockHint')}</p>
-      )}
-
       {loading && <div className="mt-8"><PatientsGridSkeleton /></div>}
       {error && <div className="mt-8"><ErrorMessage message={error} onRetry={retry} /></div>}
 
-      {!loading && !error && !USE_MOCK && (
+      {!loading && !error && (
         <div className="mt-8 rounded-[var(--radius-organic)] surface-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm font-mono">

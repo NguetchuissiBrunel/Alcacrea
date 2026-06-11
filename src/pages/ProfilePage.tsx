@@ -1,40 +1,47 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Globe, LogOut, Moon, Save, Shield, Sun, User } from 'lucide-react'
 import { useI18n } from '../contexts/I18nContext'
 import { useTheme } from '../contexts/ThemeContext'
+import { useAuth } from '../contexts/AuthContext'
 import { LanguageToggle } from '../components/ui/LanguageToggle'
 import { ThemeToggle } from '../components/ui/ThemeToggle'
 import { Header } from '../components/layout/Header'
 import { Button } from '../components/ui/Button'
+import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { Input } from '../components/ui/Input'
+import { ProfileSkeleton } from '../components/ui/Skeleton'
 import { useToast } from '../components/ui/Toast'
 import { WaveLine } from '../components/brand/WaveLine'
-
-const demoUser = {
-  email: 'dr.martin@alcacrea.fr',
-  prenom: 'Sophie',
-  nom: 'Martin',
-  role: 'praticien' as const,
-  specialite: 'Pneumologie',
-  etablissement: 'Clinique du Sommeil',
-  createdAt: '2024-01-15',
-}
+import { apiErrorMessage } from '../services/authApi'
 
 export function ProfilePage() {
   const { t, formatDate } = useI18n()
   const { showToast } = useToast()
   const { isDark } = useTheme()
+  const { user, loading, refreshUser, updateProfile, logout } = useAuth()
   const navigate = useNavigate()
+  const [refreshing, setRefreshing] = useState(false)
 
   const [form, setForm] = useState({
-    prenom: demoUser.prenom,
-    nom: demoUser.nom,
-    specialite: demoUser.specialite,
-    etablissement: demoUser.etablissement,
+    prenom: '',
+    nom: '',
+    specialite: '',
+    etablissement: '',
   })
   const [saving, setSaving] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
+
+  useEffect(() => {
+    if (user) {
+      setForm({
+        prenom: user.prenom,
+        nom: user.nom,
+        specialite: '',
+        etablissement: '',
+      })
+    }
+  }, [user])
 
   const update = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }))
@@ -43,20 +50,54 @@ export function ProfilePage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    await new Promise((r) => setTimeout(r, 400))
-    setSaving(false)
-    showToast(t('profile.updated'))
+    try {
+      await updateProfile({ fullName: `${form.prenom} ${form.nom}`.trim() })
+      showToast(t('profile.updated'))
+    } catch (err) {
+      showToast(apiErrorMessage(err), 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleLogout = async () => {
     setLoggingOut(true)
-    await new Promise((r) => setTimeout(r, 300))
+    logout()
     setLoggingOut(false)
     showToast(t('profile.logoutSuccess'))
     navigate('/login')
   }
 
-  const initials = `${form.prenom[0]}${form.nom[0]}`.toUpperCase()
+  const handleRetry = async () => {
+    setRefreshing(true)
+    try {
+      await refreshUser()
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  if (loading || refreshing) {
+    return (
+      <>
+        <Header title={t('profile.title')} subtitle={t('profile.subtitle')} />
+        <ProfileSkeleton />
+      </>
+    )
+  }
+
+  if (!user) {
+    return (
+      <>
+        <Header title={t('profile.title')} subtitle={t('profile.subtitle')} />
+        <ErrorMessage message={t('profile.loadError')} onRetry={handleRetry} />
+      </>
+    )
+  }
+
+  const initials = `${form.prenom[0] ?? ''}${form.nom[0] ?? ''}`.toUpperCase() || 'U'
+  const roleKey = user.role && ['praticien', 'admin'].includes(user.role) ? user.role : 'praticien'
+  const createdAt = user.createdAt?.trim() || new Date().toISOString().slice(0, 10)
 
   return (
     <>
@@ -75,15 +116,15 @@ export function ProfilePage() {
                 <span className="uppercase tracking-wide">{form.nom}</span>
               </h2>
               <WaveLine className="w-24 h-2 mx-auto mt-4" variant="breath" />
-              <p className="mt-4 text-vellum-ink/50 text-sm font-mono">{demoUser.email}</p>
+              <p className="mt-4 text-vellum-ink/50 text-sm font-mono">{user.email}</p>
               <div className="mt-5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-dream/10 border border-dream/20">
                 <Shield className="w-3.5 h-3.5 text-dream" aria-hidden="true" />
                 <span className="text-[10px] font-mono uppercase tracking-wider text-dream">
-                  {t(`role.${demoUser.role}`)}
+                  {t(`role.${roleKey}`)}
                 </span>
               </div>
               <p className="mt-6 text-[10px] font-mono text-vellum-ink/35 uppercase tracking-wider">
-                {t('common.memberSince')} {formatDate(demoUser.createdAt)}
+                {t('common.memberSince')} {formatDate(createdAt)}
               </p>
             </div>
           </div>
@@ -106,7 +147,7 @@ export function ProfilePage() {
             </div>
             <div className="mt-6 p-4 rounded-xl bg-ink border border-vellum/8">
               <p className="text-[10px] font-mono uppercase tracking-wider text-vellum/35 mb-1">{t('common.email')}</p>
-              <p className="text-vellum text-sm font-mono">{demoUser.email}</p>
+              <p className="text-vellum text-sm font-mono">{user.email}</p>
               <p className="mt-1 text-[10px] text-vellum/30">{t('common.emailLocked')}</p>
             </div>
             <Button type="submit" className="mt-6" loading={saving} loadingText={t('common.saving')} icon={<Save className="w-4 h-4" />}>

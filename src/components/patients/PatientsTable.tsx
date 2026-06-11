@@ -75,7 +75,11 @@ export function PatientsTable({ patients, sortKey, sortDir, onSort }: PatientsTa
               return (
                 <tr key={p.id} className="border-b border-vellum/5 hover:bg-ink-muted/20 transition-colors">
                   <td className="py-3 px-4">
-                    <Link to={`/patients/${p.id}`} className="text-vellum hover:text-breath font-medium">
+                    <Link
+                      to={`/patients/${encodeURIComponent(p.id)}`}
+                      state={{ patient: p }}
+                      className="text-vellum hover:text-breath font-medium"
+                    >
                       {p.prenom} {p.nom}
                     </Link>
                   </td>

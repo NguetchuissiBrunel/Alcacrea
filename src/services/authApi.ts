@@ -1,6 +1,10 @@
 import { AuthenticationService } from '../lib'
 import { ApiError } from '../lib/core/ApiError'
+import { API_BASE_URL } from '../config/env'
 import { getAuthToken, setAuthToken } from '../lib/setupOpenApi'
+import { unwrapApiEnvelope } from '../utils/apiEnvelope'
+
+const REFRESH_TOKEN_KEY = 'alcacrea-refresh-token'
 
 export interface AuthUser {
   email: string
@@ -18,23 +22,67 @@ function parseName(fullName: string): { prenom: string; nom: string } {
 }
 
 function mapUser(res: Record<string, unknown>): AuthUser {
-  const fullName = String(res.full_name ?? res.fullName ?? res.name ?? '')
-  const { prenom, nom } = parseName(fullName)
+  const row = unwrapApiEnvelope(res) as Record<string, unknown>
+  const prenom = String(row.prenom ?? '')
+  const nom = String(row.nom ?? '')
+  const fullName = String(row.full_name ?? row.fullName ?? row.name ?? `${prenom} ${nom}`.trim())
+  const parsed = prenom || nom ? { prenom, nom } : parseName(fullName)
   return {
-    email: String(res.email ?? ''),
+    email: String(row.email ?? ''),
     fullName,
-    prenom,
-    nom,
-    role: res.role ? String(res.role) : undefined,
-    createdAt: res.created_at ? String(res.created_at) : undefined,
+    prenom: parsed.prenom,
+    nom: parsed.nom,
+    role: row.role ? String(row.role) : undefined,
+    createdAt: row.created_at || row.createdAt ? String(row.created_at ?? row.createdAt) : undefined,
   }
 }
 
+function mapUserFromLoginResponse(res: unknown): AuthUser | null {
+  if (!res || typeof res !== 'object') return null
+  const root = res as Record<string, unknown>
+  if (root.user && typeof root.user === 'object') {
+    return mapUser(root.user as Record<string, unknown>)
+  }
+  if (root.email) return mapUser(root)
+  return null
+}
+
 function extractToken(res: unknown): string | null {
+  if (typeof res === 'string' && res.length > 10) return res
   if (!res || typeof res !== 'object') return null
   const r = res as Record<string, unknown>
-  const token = r.access_token ?? r.token
-  return token ? String(token) : null
+
+  const direct = [r.access_token, r.token, r.accessToken, r.jwt, r.auth_token]
+  for (const value of direct) {
+    if (typeof value === 'string' && value.length > 0) return value
+  }
+
+  for (const key of ['data', 'tokens', 'auth', 'result']) {
+    const nested = r[key]
+    if (nested && typeof nested === 'object') {
+      const n = nested as Record<string, unknown>
+      const token = n.access_token ?? n.token ?? n.accessToken
+      if (typeof token === 'string' && token.length > 0) return token
+    }
+  }
+
+  return null
+}
+
+function extractRefreshToken(res: unknown): string | null {
+  if (!res || typeof res !== 'object') return null
+  const r = res as Record<string, unknown>
+  const refresh = r.refresh_token ?? r.refreshToken
+  return typeof refresh === 'string' && refresh.length > 0 ? refresh : null
+}
+
+function storeTokens(res: unknown) {
+  const token = extractToken(res)
+  if (!token) throw new Error('Token manquant dans la réponse')
+  setAuthToken(token)
+  const refresh = extractRefreshToken(res)
+  if (refresh) localStorage.setItem(REFRESH_TOKEN_KEY, refresh)
+  else localStorage.removeItem(REFRESH_TOKEN_KEY)
 }
 
 export function apiErrorMessage(err: unknown): string {
@@ -42,18 +90,55 @@ export function apiErrorMessage(err: unknown): string {
     const body = err.body as Record<string, unknown> | undefined
     if (body?.detail) {
       if (typeof body.detail === 'string') return body.detail
-      if (Array.isArray(body.detail)) return body.detail.map((d) => String((d as { msg?: string }).msg ?? d)).join(', ')
+      if (Array.isArray(body.detail)) {
+        return body.detail.map((d) => String((d as { msg?: string }).msg ?? d)).join(', ')
+      }
     }
+    if (body?.message) return String(body.message)
     return err.message
   }
   return err instanceof Error ? err.message : 'Une erreur est survenue'
 }
 
+async function loginRequest(email: string, password: string): Promise<unknown> {
+  const base = API_BASE_URL || ''
+  const res = await fetch(`${base}/api/v1/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  })
+
+  const text = await res.text()
+  let data: unknown
+  try {
+    data = text ? JSON.parse(text) : undefined
+  } catch {
+    throw new Error('Réponse login invalide')
+  }
+
+  if (!res.ok) {
+    throw new ApiError(
+      { method: 'POST', url: '/api/v1/auth/login' },
+      { url: res.url, ok: res.ok, status: res.status, statusText: res.statusText, body: data },
+      typeof (data as Record<string, unknown>)?.detail === 'string'
+        ? String((data as Record<string, unknown>).detail)
+        : 'Échec de connexion',
+    )
+  }
+
+  return unwrapApiEnvelope(data)
+}
+
 export async function login(email: string, password: string): Promise<AuthUser> {
-  const res = await AuthenticationService.loginApiV1AuthLoginPost({ email, password })
-  const token = extractToken(res)
-  if (!token) throw new Error('Token manquant dans la réponse')
-  setAuthToken(token)
+  const res = await loginRequest(email, password)
+  storeTokens(res)
+
+  const fromLogin = mapUserFromLoginResponse(res)
+  if (fromLogin) return fromLogin
+
   return getMe()
 }
 
@@ -89,6 +174,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
 
 export function logout() {
   setAuthToken(null)
+  localStorage.removeItem(REFRESH_TOKEN_KEY)
 }
 
 export function isAuthenticated(): boolean {

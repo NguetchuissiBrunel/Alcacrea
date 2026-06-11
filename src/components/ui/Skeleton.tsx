@@ -47,3 +47,23 @@ export function PatientsGridSkeleton() {
     </div>
   )
 }
+
+export function ProfileSkeleton() {
+  const { t } = useI18n()
+  return (
+    <div aria-busy="true" aria-label={t('profile.loading')}>
+      <Skeleton className="h-10 w-64 mb-2" />
+      <Skeleton className="h-4 w-96 max-w-full mb-10" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1 space-y-4">
+          <Skeleton className="h-72 rounded-[var(--radius-organic)]" />
+          <Skeleton className="h-11 rounded-2xl" />
+        </div>
+        <div className="lg:col-span-2 space-y-6">
+          <Skeleton className="h-80 rounded-[var(--radius-organic)]" />
+          <Skeleton className="h-44 rounded-[var(--radius-organic)]" />
+        </div>
+      </div>
+    </div>
+  )
+}

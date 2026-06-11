@@ -40,7 +40,7 @@ export function BackgroundWaves() {
           strokeWidth="1.4"
         />
         <path
-          d="M0,65 C150,40 300,80 450,55 S600,30 750,65 S900,90 1050,55 S1200,30 1350,65 1440,50"
+          d="M0,65 C150,40 300,80 450,55 S600,30 750,65 S900,90 1050,55 S1200,30 1350,65 S1380,50 1440,50"
           fill="none"
           stroke="var(--color-gold)"
           strokeWidth="0.9"

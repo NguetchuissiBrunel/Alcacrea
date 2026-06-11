@@ -2,6 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import { unwrapApiEnvelope } from '../../utils/apiEnvelope';
 import { ApiError } from './ApiError';
 import type { ApiRequestOptions } from './ApiRequestOptions';
 import type { ApiResult } from './ApiResult';
@@ -232,16 +233,17 @@ export const getResponseHeader = (response: Response, responseHeader?: string): 
 export const getResponseBody = async (response: Response): Promise<any> => {
     if (response.status !== 204) {
         try {
+            const text = await response.text();
+            if (!text) return undefined;
             const contentType = response.headers.get('Content-Type');
-            if (contentType) {
-                const jsonTypes = ['application/json', 'application/problem+json']
-                const isJSON = jsonTypes.some(type => contentType.toLowerCase().startsWith(type));
-                if (isJSON) {
-                    return await response.json();
-                } else {
-                    return await response.text();
-                }
+            const jsonTypes = ['application/json', 'application/problem+json'];
+            const isJSON =
+                !contentType ||
+                jsonTypes.some((type) => contentType.toLowerCase().startsWith(type));
+            if (isJSON) {
+                return JSON.parse(text);
             }
+            return text;
         } catch (error) {
             console.error(error);
         }
@@ -313,7 +315,7 @@ export const request = <T>(config: OpenAPIConfig, options: ApiRequestOptions): C
 
                 catchErrorCodes(options, result);
 
-                resolve(result.body);
+                resolve(unwrapApiEnvelope(result.body));
             }
         } catch (error) {
             reject(error);

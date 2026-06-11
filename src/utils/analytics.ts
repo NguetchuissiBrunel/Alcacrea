@@ -1,17 +1,14 @@
-import { buildMockFilterMetadata } from './mockFilterMetadata'
-import { mockPatients } from './mockPatients'
 import type {
   AnalyticsScatter,
   AnalyticsSeverityBreakdown,
   AnalyticsTrends,
   ScatterPoint,
-  SyncStatus,
 } from '../types/analytics'
 import type { Locale } from '../i18n/translations'
-import type { ExamType, Patient, PatientFilters, Severity } from '../types/patient'
-import { filterPatients } from '../utils/patientFilters'
+import type { ExamType, Patient, Severity } from '../types/patient'
+import { buildFilterMetadata } from '../data/filterMetadata'
 
-export function buildMockScatter(patients: Patient[]): AnalyticsScatter {
+export function buildScatter(patients: Patient[]): AnalyticsScatter {
   const points: ScatterPoint[] = []
   let excluded = 0
 
@@ -37,7 +34,7 @@ export function buildMockScatter(patients: Patient[]): AnalyticsScatter {
   return { points, meta: { total: points.length, excludedNoIah: excluded } }
 }
 
-export function buildMockTrends(
+export function buildTrends(
   patients: Patient[],
   metric: 'iah' | 'ido' | 'satO2Min' | 'vems' = 'iah',
 ): AnalyticsTrends {
@@ -73,44 +70,32 @@ export function buildMockTrends(
   return { metric, unit: units[metric], groupBy: 'month', series }
 }
 
-export function buildMockSeverityBreakdown(
+export function buildSeverityBreakdown(
   patients: Patient[],
   locale: Locale,
 ): AnalyticsSeverityBreakdown {
-  const { examTypes, severities } = buildMockFilterMetadata(locale)
+  const { examTypes } = buildFilterMetadata(locale)
   const typeLabels = Object.fromEntries(
     examTypes.filter((t) => t.value !== 'all').map((t) => [t.value, t.label]),
   ) as Record<ExamType, string>
 
   const breakdown: AnalyticsSeverityBreakdown['breakdown'] = (
     ['polysomnographie', 'polygraphie', 'efr'] as ExamType[]
-  ).map((examType) => {
-    const counts: Record<Severity, number> = {
-      normal: 0,
-      leger: 0,
-      modere: 0,
-      severe: 0,
-    }
-    patients.forEach((p) => {
-      p.exams.filter((e) => e.type === examType).forEach((e) => counts[e.severity]++)
+  )
+    .map((examType) => {
+      const counts: Record<Severity, number> = {
+        normal: 0,
+        leger: 0,
+        modere: 0,
+        severe: 0,
+      }
+      patients.forEach((p) => {
+        p.exams.filter((e) => e.type === examType).forEach((e) => counts[e.severity]++)
+      })
+      const total = Object.values(counts).reduce((s, v) => s + v, 0)
+      return { examType, label: typeLabels[examType], severities: counts, total }
     })
-    const total = Object.values(counts).reduce((s, v) => s + v, 0)
-    return { examType, label: typeLabels[examType], severities: counts, total }
-  }).filter((b) => b.total > 0)
+    .filter((b) => b.total > 0)
 
-  void severities
   return { breakdown }
-}
-
-export function getMockSyncStatus(): SyncStatus {
-  return {
-    status: 'idle',
-    lastSyncAt: '2026-06-09T14:02:30Z',
-    nextSyncAt: '2026-06-09T14:17:30Z',
-    lastSync: { filesParsed: 10, filesFailed: 1, examsCreated: 8 },
-  }
-}
-
-export function getFilteredPatients(filters?: PatientFilters): Patient[] {
-  return filters ? filterPatients(mockPatients, filters) : mockPatients
 }

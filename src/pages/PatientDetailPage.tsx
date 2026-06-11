@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowUpRight, FileText, UserX } from 'lucide-react'
 import { PatientEvolutionChart } from '../components/charts/PatientEvolutionChart'
 import { WaveLine } from '../components/brand/WaveLine'
@@ -10,19 +10,26 @@ import { useBackendLabels } from '../contexts/FilterMetadataContext'
 import { useI18n } from '../contexts/I18nContext'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { api } from '../services/api'
-import type { ExamMetrics } from '../types/patient'
+import type { ExamMetrics, Patient } from '../types/patient'
+import { patientIdsMatch } from '../services/backendMapper'
 
 export function PatientDetailPage() {
   const { t, formatDate } = useI18n()
   const { metricLabels } = useBackendLabels()
   const { id } = useParams<{ id: string }>()
-  const { data: patient, loading, error, retry } = useAsyncData(
+  const location = useLocation()
+  const statePatient = (location.state as { patient?: Patient } | null)?.patient
+  const { data: fetchedPatient, loading, error, retry } = useAsyncData(
     () => (id ? api.getPatient(id) : Promise.resolve(null)),
     [id],
   )
 
-  if (loading) return <PatientDetailSkeleton />
-  if (error) return <ErrorMessage message={error} onRetry={retry} />
+  const patient =
+    fetchedPatient ??
+    (id && statePatient && patientIdsMatch(statePatient.id, id) ? statePatient : null)
+
+  if (loading && !patient) return <PatientDetailSkeleton />
+  if (error && !patient) return <ErrorMessage message={error} onRetry={retry} />
 
   if (!patient) {
     return (
@@ -81,7 +88,11 @@ export function PatientDetailPage() {
               <SeverityBadge severity={exam.severity} />
               <span className="text-vellum/30 text-xs font-mono ml-auto">{formatDate(exam.date)}</span>
               <Link
-                to={`/patients/${patient.id}/exams/${exam.id}`}
+                to={
+                  exam.backendRef
+                    ? `/exams/${exam.backendRef.type}/${exam.backendRef.id}`
+                    : `/patients/${patient.id}/exams/${exam.id}`
+                }
                 className="inline-flex items-center gap-1 text-xs font-mono text-breath/70 hover:text-breath transition-colors"
               >
                 {t('patientDetail.viewCurves')}

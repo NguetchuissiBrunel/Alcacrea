@@ -1,13 +1,17 @@
 import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, ChevronDown, ChevronUp, FileJson } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, ChevronDown, ChevronUp, FileJson, Trash2 } from 'lucide-react'
 import { BackendCurvesPanel } from '../components/exams/BackendCurvesPanel'
 import { ParsedFieldsGrid } from '../components/exams/ParsedFieldsGrid'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { PatientDetailSkeleton } from '../components/ui/Skeleton'
 import { useI18n } from '../contexts/I18nContext'
 import { useAsyncData } from '../hooks/useAsyncData'
-import { fetchBackendExam } from '../services/backendExamApi'
+import { deleteBackendExam, fetchBackendExam } from '../services/backendExamApi'
+import { invalidateBackendCache } from '../services/backendData'
+import { api } from '../services/api'
+import { apiErrorMessage } from '../services/authApi'
+import { useToast } from '../components/ui/Toast'
 import type { BackendExamType } from '../types/backendExam'
 import { extractCurvesFromParsedData, flattenParsedFields } from '../utils/curveExtractor'
 
@@ -19,8 +23,11 @@ function isValidType(t: string | undefined): t is BackendExamType {
 
 export function BackendExamPage() {
   const { t } = useI18n()
+  const { showToast } = useToast()
+  const navigate = useNavigate()
   const { type, id } = useParams<{ type: string; id: string }>()
   const [showRaw, setShowRaw] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const examId = Number(id)
   const valid = isValidType(type) && !Number.isNaN(examId)
@@ -76,6 +83,31 @@ export function BackendExamPage() {
         </h1>
         {examDate && <p className="text-vellum/40 text-sm font-mono mt-2">{examDate}</p>}
         <p className="text-vellum/50 text-sm mt-4 max-w-2xl">{t('backendExam.enrichDesc')}</p>
+        {valid && (
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={async () => {
+              if (!confirm(t('exams.confirmDelete'))) return
+              setDeleting(true)
+              try {
+                await deleteBackendExam(type, examId)
+                invalidateBackendCache()
+                api.invalidateCache()
+                showToast(t('exams.deleted'))
+                navigate('/exams')
+              } catch (err) {
+                showToast(apiErrorMessage(err), 'error')
+              } finally {
+                setDeleting(false)
+              }
+            }}
+            className="mt-6 inline-flex items-center gap-2 text-xs font-mono text-pulse/70 hover:text-pulse disabled:opacity-40"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            {t('exams.delete')}
+          </button>
+        )}
       </div>
 
       <h2 className="font-serif text-2xl text-vellum mb-6">{t('examDetail.curves')}</h2>

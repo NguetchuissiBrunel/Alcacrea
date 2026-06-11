@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Activity, BarChart3, Download, Upload, UserCircle, Users } from 'lucide-react'
+import { Activity, BarChart3, ClipboardList, Download, Upload, UserCircle, Users } from 'lucide-react'
 import { useI18n } from '../../contexts/I18nContext'
 import { Logo } from '../brand/Logo'
 import { LanguageToggle } from '../ui/LanguageToggle'
@@ -11,6 +11,7 @@ export function Sidebar() {
   const mainNavItems = [
     { to: '/', icon: Activity, label: t('nav.overview'), shortLabel: t('nav.home') },
     { to: '/import', icon: Upload, label: t('nav.import'), shortLabel: t('nav.importShort') },
+    { to: '/exams', icon: ClipboardList, label: t('nav.exams'), shortLabel: t('nav.examsShort') },
     { to: '/patients', icon: Users, label: t('nav.patients'), shortLabel: t('nav.patients') },
     { to: '/analyse', icon: BarChart3, label: t('nav.analysis'), shortLabel: t('nav.analysis') },
     { to: '/export', icon: Download, label: t('nav.export'), shortLabel: t('nav.export') },

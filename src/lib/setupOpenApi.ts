@@ -1,9 +1,10 @@
+import { API_BASE_URL } from '../config/env'
 import { OpenAPI } from './core/OpenAPI'
 
 const TOKEN_KEY = 'alcacrea-token'
 
 export function setupOpenApi() {
-  OpenAPI.BASE = import.meta.env.VITE_API_URL ?? 'https://parser.datapipe.duckdns.org'
+  OpenAPI.BASE = API_BASE_URL
   OpenAPI.TOKEN = async () => localStorage.getItem(TOKEN_KEY) ?? ''
 }
 
