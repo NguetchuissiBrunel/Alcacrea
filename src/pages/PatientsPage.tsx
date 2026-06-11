@@ -20,7 +20,10 @@ export function PatientsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('cards')
   const [sortKey, setSortKey] = useState<PatientSortKey>('name')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
-  const { data: patients, loading, error, retry } = useAsyncData(() => api.getPatients(filters), [filters])
+  const { data: patients, loading, error, retry } = useAsyncData(
+    () => api.getPatients(filters, true),
+    [filters],
+  )
 
   const countLabel = patients
     ? t(patients.length > 1 ? 'patients.found_other' : 'patients.found_one', { count: patients.length })

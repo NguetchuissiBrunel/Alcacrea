@@ -21,12 +21,12 @@ export function StatCard({ label, value, unit, accent = 'breath', icon }: StatCa
       className={`stat-card-accent relative overflow-hidden rounded-[var(--radius-organic)] surface-card p-6 ${accentMap[accent]}`}
     >
       <div className="flex items-start justify-between">
-        <p className="text-vellum/35 text-[10px] font-mono tracking-[0.16em] uppercase">{label}</p>
-        {icon && <span className="opacity-50">{icon}</span>}
+        <p className="field-label">{label}</p>
+        {icon && <span className="opacity-70">{icon}</span>}
       </div>
-      <p className="mt-5 font-serif text-[2.75rem] text-vellum leading-none tracking-tight">
+      <p className="mt-5 field-value-lg">
         {value}
-        {unit && <span className="text-base text-vellum/35 ml-1.5 font-sans font-light">{unit}</span>}
+        {unit && <span className="text-sm text-clinical-muted ml-1.5 font-sans font-semibold">{unit}</span>}
       </p>
     </div>
   )

@@ -77,7 +77,7 @@ export function PdfParsingPanel({ jobs }: PdfParsingPanelProps) {
               {job.examRef && step >= 3 && (
                 <Link
                   to={`/exams/${job.examRef.type}/${job.examRef.id}`}
-                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-mono text-breath hover:underline"
+                  className="action-link"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   {t('import.viewExam')}

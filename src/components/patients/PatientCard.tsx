@@ -16,7 +16,6 @@ export function PatientCard({ patient }: PatientCardProps) {
   return (
     <Link
       to={`/patients/${encodeURIComponent(patient.id)}`}
-      state={{ patient }}
       className="group relative block overflow-hidden rounded-[var(--radius-organic)] dossier-surface p-6 pt-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
     >
       <div className="dossier-tab" aria-hidden="true" />

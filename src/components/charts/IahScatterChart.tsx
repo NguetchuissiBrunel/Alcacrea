@@ -72,7 +72,7 @@ export function IahScatterChart({ patients, scatterPoints }: IahScatterChartProp
               name={t('analysis.iahAxis')}
               unit="/h"
               domain={[0, 55]}
-              tick={{ fill: chartTheme.tick, fontSize: 11, fontFamily: 'JetBrains Mono' }}
+              tick={{ fill: chartTheme.tick, fontSize: 11, fontFamily: 'IBM Plex Sans' }}
               axisLine={false}
               tickLine={false}
             />
@@ -82,7 +82,7 @@ export function IahScatterChart({ patients, scatterPoints }: IahScatterChartProp
               name={t('analysis.satO2Axis')}
               unit="%"
               domain={[75, 100]}
-              tick={{ fill: chartTheme.tick, fontSize: 11, fontFamily: 'JetBrains Mono' }}
+              tick={{ fill: chartTheme.tick, fontSize: 11, fontFamily: 'IBM Plex Sans' }}
               axisLine={false}
               tickLine={false}
             />

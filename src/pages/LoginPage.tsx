@@ -57,11 +57,8 @@ export function LoginPage() {
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-vellum/40">
-        {t('auth.noAccount')}{' '}
-        <Link to="/register" className="text-breath hover:text-breath/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-breath/40 rounded">
-          {t('auth.createAccount')}
-        </Link>
+      <p className="mt-6 text-center text-xs text-vellum/35 leading-relaxed max-w-sm mx-auto">
+        {t('auth.clinicAccessHint')}
       </p>
     </div>
   )

@@ -7,9 +7,17 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { ApiError } from '../lib/core/ApiError'
 import type { AuthUser } from '../services/authApi'
 import * as authApi from '../services/authApi'
-import { getAuthToken } from '../lib/setupOpenApi'
+import {
+  cacheAuthUser,
+  clearAuthSession,
+  ensureValidAccessToken,
+  hasStoredSession,
+  readCachedAuthUser,
+  registerSessionExpiredHandler,
+} from '../services/authSession'
 import { invalidateBackendCache } from '../services/backendData'
 import { api } from '../services/api'
 
@@ -17,7 +25,6 @@ interface AuthContextValue {
   user: AuthUser | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (email: string, password: string, fullName: string) => Promise<void>
   logout: () => void
   refreshUser: () => Promise<void>
   updateProfile: (data: { fullName?: string; oldPassword?: string; newPassword?: string }) => Promise<void>
@@ -27,35 +34,83 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+let refreshUserInFlight: Promise<void> | null = null
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null)
+  const [user, setUser] = useState<AuthUser | null>(() =>
+    hasStoredSession() ? readCachedAuthUser() : null,
+  )
   const [loading, setLoading] = useState(true)
 
-  const refreshUser = useCallback(async () => {
-    if (!getAuthToken()) {
-      setUser(null)
-      return
-    }
-    const me = await authApi.getMe()
+  const applyUser = useCallback((me: AuthUser | null) => {
     setUser(me)
+    if (me) cacheAuthUser(me)
+  }, [])
+
+  const refreshUser = useCallback(async () => {
+    if (refreshUserInFlight) return refreshUserInFlight
+
+    refreshUserInFlight = (async () => {
+      if (!hasStoredSession()) {
+        setUser(null)
+        return
+      }
+
+      const hasSession = await ensureValidAccessToken()
+      if (!hasSession) {
+        clearAuthSession()
+        setUser(null)
+        return
+      }
+
+      try {
+        const me = await authApi.getMe()
+        applyUser(me)
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          clearAuthSession()
+          setUser(null)
+          return
+        }
+        const cached = readCachedAuthUser()
+        if (cached) setUser(cached)
+      }
+    })().finally(() => {
+      refreshUserInFlight = null
+    })
+
+    return refreshUserInFlight
+  }, [applyUser])
+
+  useEffect(() => {
+    registerSessionExpiredHandler(() => {
+      clearAuthSession()
+      setUser(null)
+    })
   }, [])
 
   useEffect(() => {
-    refreshUser()
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false))
+    refreshUser().finally(() => setLoading(false))
   }, [refreshUser])
 
-  const login = useCallback(async (email: string, password: string) => {
-    const me = await authApi.login(email, password)
-    invalidateBackendCache()
-    api.invalidateCache()
-    setUser(me)
-  }, [])
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && hasStoredSession()) {
+        void refreshUser().catch(() => {})
+      }
+    }, 5 * 60 * 1000)
+    return () => window.clearInterval(interval)
+  }, [refreshUser])
 
-  const register = useCallback(async (email: string, password: string, fullName: string) => {
-    await authApi.register(email, password, fullName)
-  }, [])
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const me = await authApi.login(email, password)
+      invalidateBackendCache()
+      api.invalidateCache()
+      applyUser(me)
+    },
+    [applyUser],
+  )
 
   const logout = useCallback(() => {
     authApi.logout()
@@ -65,9 +120,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfile = useCallback(
     async (data: { fullName?: string; oldPassword?: string; newPassword?: string }) => {
       const me = await authApi.updateProfile(data)
-      setUser(me)
+      applyUser(me)
     },
-    [],
+    [applyUser],
   )
 
   const forgotPassword = useCallback(async (email: string) => {
@@ -83,14 +138,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       login,
-      register,
       logout,
       refreshUser,
       updateProfile,
       forgotPassword,
       resetPassword,
     }),
-    [user, loading, login, register, logout, refreshUser, updateProfile, forgotPassword, resetPassword],
+    [user, loading, login, logout, refreshUser, updateProfile, forgotPassword, resetPassword],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

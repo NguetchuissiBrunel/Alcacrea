@@ -23,7 +23,7 @@ export function AppShell() {
 
       <main
         id="main-content"
-        className="relative z-10 px-4 md:pl-[5.5rem] md:pr-12 pr-4 pt-[4.25rem] md:pt-8 md:py-10 pb-24 md:pb-10 max-w-[1380px] mx-auto"
+        className="relative z-10 page-shell px-4 sm:px-6 md:pl-[5.5rem] md:pr-10 lg:pr-12 pt-[calc(4rem+env(safe-area-inset-top,0px))] md:pt-8 pb-[calc(5.25rem+env(safe-area-inset-bottom,0px))] md:pb-10 max-w-[1380px] mx-auto w-full"
       >
         <ErrorBoundary onReset={() => navigate(0)}>
           <Outlet />

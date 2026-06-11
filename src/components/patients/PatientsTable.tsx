@@ -43,7 +43,7 @@ export function PatientsTable({ patients, sortKey, sortDir, onSort }: PatientsTa
       <button
         type="button"
         onClick={() => onSort(key)}
-        className="text-[10px] font-mono uppercase tracking-wider text-vellum/40 hover:text-breath transition-colors"
+        className="table-head hover:text-breath transition-colors"
       >
         {label}
         {sortKey === key && (sortDir === 'asc' ? ' ↑' : ' ↓')}
@@ -53,20 +53,16 @@ export function PatientsTable({ patients, sortKey, sortDir, onSort }: PatientsTa
 
   return (
     <div className="rounded-[var(--radius-organic)] surface-card overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="table-scroll">
+        <table className="w-full text-sm min-w-[720px]">
           <thead>
             <tr className="border-b border-vellum/8 bg-ink-muted/30">
               {th('name', t('patients.colName'))}
               {th('date', t('patients.colDate'))}
-              <th className="py-3 px-4 text-left text-[10px] font-mono uppercase tracking-wider text-vellum/40">
-                {t('patients.colExam')}
-              </th>
+              <th className="py-3 px-4 text-left table-head">{t('patients.colExam')}</th>
               {th('severity', t('patients.colSeverity'))}
               {th('iah', t('patients.colIah'))}
-              <th className="py-3 px-4 text-right text-[10px] font-mono uppercase tracking-wider text-vellum/40">
-                {t('patients.colExams')}
-              </th>
+              <th className="py-3 px-4 text-right table-head">{t('patients.colExams')}</th>
             </tr>
           </thead>
           <tbody>
@@ -75,11 +71,7 @@ export function PatientsTable({ patients, sortKey, sortDir, onSort }: PatientsTa
               return (
                 <tr key={p.id} className="border-b border-vellum/5 hover:bg-ink-muted/20 transition-colors">
                   <td className="py-3 px-4">
-                    <Link
-                      to={`/patients/${encodeURIComponent(p.id)}`}
-                      state={{ patient: p }}
-                      className="text-vellum hover:text-breath font-medium"
-                    >
+                    <Link to={`/patients/${encodeURIComponent(p.id)}`} className="text-vellum hover:text-breath font-medium">
                       {p.prenom} {p.nom}
                     </Link>
                   </td>

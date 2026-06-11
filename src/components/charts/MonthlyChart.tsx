@@ -25,8 +25,8 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
             </linearGradient>
           </defs>
           <CartesianGrid stroke={chartTheme.grid} vertical={false} />
-          <XAxis dataKey="label" tick={{ fill: chartTheme.tick, fontSize: 11, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fill: chartTheme.tick, fontSize: 11, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <XAxis dataKey="label" tick={{ fill: chartTheme.tick, fontSize: 11, fontFamily: 'IBM Plex Sans' }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: chartTheme.tick, fontSize: 11, fontFamily: 'IBM Plex Sans' }} axisLine={false} tickLine={false} allowDecimals={false} />
           <Tooltip contentStyle={chartTheme.tooltip} />
           <Area type="monotone" dataKey="count" name={t('charts.exams')} stroke={breath} strokeWidth={2} fill="url(#breathGrad)" />
         </AreaChart>

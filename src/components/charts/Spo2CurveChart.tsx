@@ -26,14 +26,14 @@ export function Spo2CurveChart({ data }: Spo2CurveChartProps) {
             <XAxis
               dataKey="t"
               unit=" min"
-              tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'JetBrains Mono' }}
+              tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'IBM Plex Sans' }}
               axisLine={false}
               tickLine={false}
             />
             <YAxis
               domain={[75, 100]}
               unit="%"
-              tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'JetBrains Mono' }}
+              tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'IBM Plex Sans' }}
               axisLine={false}
               tickLine={false}
             />

@@ -1,5 +1,8 @@
 import { themeColors } from './themeColors'
 
+/** Police unique pour l'application (graphiques inclus). */
+export const APP_FONT = '"IBM Plex Sans", system-ui, sans-serif'
+
 function hexToRgba(hex: string, alpha: number): string {
   const h = hex.replace('#', '')
   const r = parseInt(h.substring(0, 2), 16)
@@ -16,11 +19,12 @@ export function getChartTheme() {
     grid: hexToRgba(vellum, 0.05),
     tick: hexToRgba(vellum, 0.38),
     cursor: hexToRgba(breath, 0.2),
+    fontFamily: APP_FONT,
     tooltip: {
       background: themeColors.inkSoft,
       border: `1px solid ${hexToRgba(breath, 0.2)}`,
       borderRadius: '12px',
-      fontFamily: 'JetBrains Mono',
+      fontFamily: APP_FONT,
       fontSize: '12px',
       color: vellum,
       boxShadow: `0 4px 20px ${hexToRgba(breath, 0.12)}`,

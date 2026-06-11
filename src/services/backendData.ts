@@ -17,8 +17,25 @@ import {
   parseExamRowId,
   unwrapApiEnvelope,
 } from '../utils/apiEnvelope'
-import { filterPatients } from '../utils/patientFilters'
-import { buildPatientsFromExamRows, patientIdFromName, patientIdsMatch } from './backendMapper'
+import { defaultFilters } from '../constants/filters'
+import {
+  normalizePatientKey,
+  patientIdFromName,
+  patientIdVariants,
+  slugToSearchTerms,
+} from '../utils/patientIdentity'
+import { filterPatients, hasActiveFilters } from '../utils/patientFilters'
+import { PdfUploadService } from '../lib'
+import { fetchBackendExam, listAllPdfJobs } from './backendExamApi'
+import { buildPatientsFromExamRows } from './backendMapper'
+import { PDFStatus } from '../lib'
+import {
+  examRowMatchesPdfFileId,
+  inferExamTypeFromPdfType,
+  parseExamRefFromStatus,
+} from '../utils/pdfJobParser'
+import { extractExamDate, normalizeExamDate } from '../utils/examMeta'
+import { extractPatientNom } from '../utils/patientIdentity'
 
 export interface BackendExamRow {
   type: BackendExamType
@@ -102,6 +119,117 @@ async function fetchTypeRows(
     .filter((r) => r.id > 0)
 }
 
+function dedupeExamRows(rows: BackendExamRow[]): BackendExamRow[] {
+  const seen = new Set<string>()
+  return rows.filter((row) => {
+    const key = `${row.type}:${row.id}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function fallbackExamRaw(
+  examRef: { type: BackendExamType; id: number; patientNom?: string; date?: string; severite?: string },
+  pdf: { id: number; fileName: string; pdfType?: string },
+  statusRow: Record<string, unknown>,
+): Record<string, unknown> {
+  const patientNom = extractPatientNom(statusRow)
+  return normalizeExamRawRow({
+    id: examRef.id,
+    patient_nom: patientNom !== 'Inconnu' ? patientNom : examRef.patientNom,
+    PATIENT_NOM: statusRow.PATIENT_NOM,
+    PATIENT_PRENOM: statusRow.PATIENT_PRENOM,
+    DATE_EXAMEN: statusRow.DATE_EXAMEN,
+    date_enregistrement: examRef.date ?? extractExamDate(statusRow),
+    severite: examRef.severite ?? statusRow.severite,
+    filename: pdf.fileName,
+    pdf_type: pdf.pdfType ?? statusRow.pdf_type,
+    pdf_file_id: pdf.id,
+  })
+}
+
+async function findExamRefByPdfFileId(
+  pdfFileId: number,
+  pdfType?: string,
+): Promise<ReturnType<typeof parseExamRefFromStatus>> {
+  const type = inferExamTypeFromPdfType(pdfType ?? '')
+  if (!type) return undefined
+
+  try {
+    const res = await fetchTypePage(type, 1, API_PAGE_LIMIT)
+    for (const item of extractItems(res)) {
+      if (!examRowMatchesPdfFileId(item, pdfFileId)) continue
+      const examId = parseExamRowId(item)
+      if (examId <= 0) continue
+      return {
+        type,
+        id: examId,
+        label: `${type} #${examId}`,
+        patientNom: extractPatientNom(item),
+        date: normalizeExamDate(extractExamDate(item)),
+        severite: String(item.severite ?? item.SEVERITE ?? ''),
+      }
+    }
+  } catch (err) {
+    rethrowUnlessSafe(err)
+  }
+  return undefined
+}
+
+/** Charge les examens via les PDF parsés (status=done) + détail API. */
+async function fetchRowsFromParsedPdfs(): Promise<BackendExamRow[]> {
+  const pdfs = await listAllPdfJobs(100).catch(() => [] as Awaited<ReturnType<typeof listAllPdfJobs>>)
+  const done = pdfs.filter((p) => p.status === PDFStatus.DONE || p.status === 'done')
+  const rows: BackendExamRow[] = []
+
+  for (const pdf of done) {
+    let examRef = pdf.examRef
+    let statusRow: Record<string, unknown> = {}
+
+    try {
+      statusRow = normalizeExamRawRow(
+        (await PdfUploadService.getPdfStatusApiV1PdfStatusPdfFileIdGet(pdf.id)) as Record<string, unknown>,
+      )
+      if (!examRef) {
+        examRef = parseExamRefFromStatus({
+          ...statusRow,
+          pdf_type: statusRow.pdf_type ?? pdf.pdfType,
+          filename: statusRow.filename ?? statusRow.file_name ?? pdf.fileName,
+        })
+      }
+    } catch (err) {
+      rethrowUnlessSafe(err)
+    }
+
+    if (!examRef) {
+      examRef = await findExamRefByPdfFileId(pdf.id, String(statusRow.pdf_type ?? pdf.pdfType ?? ''))
+    }
+
+    if (!examRef) continue
+
+    const pushRow = (raw: Record<string, unknown>) => {
+      if (pdf.fileName) raw.filename = raw.filename ?? raw.file_name ?? pdf.fileName
+      raw.pdf_file_id = raw.pdf_file_id ?? pdf.id
+      rows.push({ type: examRef!.type, id: examRef!.id, raw: normalizeExamRawRow(raw) })
+    }
+
+    try {
+      const detail = await fetchBackendExam(examRef.type, examRef.id)
+      if (detail && typeof detail === 'object') {
+        pushRow(detail as Record<string, unknown>)
+      } else {
+        pushRow(fallbackExamRaw(examRef, pdf, statusRow))
+      }
+    } catch (err) {
+      if (isAuthApiError(err)) throw err
+      pushRow(fallbackExamRaw(examRef, pdf, statusRow))
+    }
+  }
+
+  return dedupeExamRows(rows)
+}
+
 let cache: { patients: Patient[]; rows: BackendExamRow[]; at: number } | null = null
 const CACHE_MS = 15_000
 
@@ -114,15 +242,20 @@ export async function fetchAllExamRows(
   filters?: PatientFilters,
   force = false,
 ): Promise<BackendExamRow[]> {
-  if (!force && cache && Date.now() - cache.at < CACHE_MS && !filters) return cache.rows
+  if (!hasActiveFilters(filters) && !force && cache && Date.now() - cache.at < CACHE_MS) return cache.rows
 
   const types: BackendExamType[] = ['polysomnographie', 'polygraphie-ppc', 'efr-standard', 'efr-avancee']
   const chunks = await Promise.all(
     types.map((t) => fetchTypeRows(t, limit, filters).catch((err) => rethrowUnlessSafe(err))),
   )
-  const rows = chunks.flat()
+  let rows = dedupeExamRows(chunks.flat())
 
-  if (!filters) {
+  if (!hasActiveFilters(filters)) {
+    const pdfRows = await fetchRowsFromParsedPdfs()
+    rows = dedupeExamRows([...rows, ...pdfRows])
+  }
+
+  if (!hasActiveFilters(filters)) {
     const patients = buildPatientsFromExamRows(rows)
     cache = { patients, rows, at: Date.now() }
   }
@@ -131,43 +264,51 @@ export async function fetchAllExamRows(
 }
 
 export async function fetchBackendPatients(filters?: PatientFilters, force = false): Promise<Patient[]> {
-  if (!filters && !force && cache && Date.now() - cache.at < CACHE_MS) return cache.patients
+  if (!hasActiveFilters(filters) && !force && cache && Date.now() - cache.at < CACHE_MS) return cache.patients
 
   const rows = await fetchAllExamRows(API_PAGE_LIMIT, filters, force)
   const patients = buildPatientsFromExamRows(rows)
   return filters ? filterPatients(patients, filters) : patients
 }
 
-function findPatientInList(patients: Patient[], id: string): Patient | null {
-  const normalized = decodeURIComponent(id).trim()
+function findPatientInList(patients: Patient[], targetId: string): Patient | undefined {
+  const decoded = decodeURIComponent(targetId)
+  const direct = patients.find((p) => p.id === decoded)
+  if (direct) return direct
 
-  const exact = patients.find((p) => patientIdsMatch(p.id, normalized))
-  if (exact) return exact
-
-  const slug = normalized.replace(/^p-/, '').toLowerCase()
-  if (!slug) return null
-
-  return (
-    patients.find((p) => {
-      const pSlug = p.id.replace(/^p-/, '').toLowerCase()
-      if (pSlug === slug) return true
-      const fromName = patientIdFromName(`${p.prenom} ${p.nom}`).replace(/^p-/, '')
-      const fromNameRev = patientIdFromName(`${p.nom} ${p.prenom}`).replace(/^p-/, '')
-      return fromName === slug || fromNameRev === slug
-    }) ?? null
-  )
+  return patients.find((p) => patientIdVariants(p.prenom, p.nom).includes(decoded))
 }
 
 export async function fetchBackendPatient(id: string): Promise<Patient | null> {
-  const normalized = decodeURIComponent(id).trim()
+  const decodedId = decodeURIComponent(id)
 
-  if (cache) {
-    const cached = findPatientInList(cache.patients, normalized)
-    if (cached) return cached
+  const all = await fetchBackendPatients(undefined, true)
+  const fromAll = findPatientInList(all, decodedId)
+  if (fromAll) return fromAll
+
+  for (const term of slugToSearchTerms(decodedId)) {
+    const filters = { ...defaultFilters, search: term }
+    const rows = await fetchAllExamRows(API_PAGE_LIMIT, filters, true)
+    if (rows.length === 0) continue
+
+    const patients = buildPatientsFromExamRows(rows)
+    const match = findPatientInList(patients, decodedId)
+    if (match) return match
+
+    if (patients.length === 1) return patients[0]
+    const loose = patients.find((p) => {
+      const key = normalizePatientKey(`${p.prenom} ${p.nom}`)
+      return decodedId.includes(patientIdFromName(key).replace(/^p-/, ''))
+    })
+    if (loose) return loose
   }
 
-  const patients = await fetchBackendPatients(undefined, true)
-  return findPatientInList(patients, normalized)
+  return null
+}
+
+export async function countParsedPdfs(): Promise<number> {
+  const pdfs = await listAllPdfJobs(100).catch(() => [])
+  return pdfs.filter((p) => p.status === PDFStatus.DONE || p.status === 'done').length
 }
 
 export async function checkBackendHealth(): Promise<boolean> {

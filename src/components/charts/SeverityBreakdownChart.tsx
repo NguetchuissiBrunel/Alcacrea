@@ -30,10 +30,10 @@ export function SeverityBreakdownChart({ data }: SeverityBreakdownChartProps) {
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={formatted} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid stroke={chartTheme.grid} vertical={false} />
-          <XAxis dataKey="type" tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
+          <XAxis dataKey="type" tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'IBM Plex Sans' }} axisLine={false} tickLine={false} />
           <YAxis allowDecimals={false} tick={{ fill: chartTheme.tick, fontSize: 10 }} axisLine={false} tickLine={false} />
           <Tooltip contentStyle={chartTheme.tooltip} />
-          <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'JetBrains Mono' }} />
+          <Legend wrapperStyle={{ fontSize: 10, fontFamily: 'IBM Plex Sans' }} />
           {severityKeys.map((key) => (
             <Bar key={key} dataKey={key} stackId="a" fill={severityColors[key]} name={severityLabels[key] ?? key} />
           ))}

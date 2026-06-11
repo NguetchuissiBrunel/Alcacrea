@@ -39,7 +39,7 @@ export function SleepStagesChart({ data }: SleepStagesChartProps) {
           <BarChart data={bars} layout="vertical" margin={{ left: 4, right: 8 }}>
             <CartesianGrid stroke={chartTheme.grid} horizontal={false} />
             <XAxis type="number" unit=" min" tick={{ fill: chartTheme.tick, fontSize: 10 }} axisLine={false} tickLine={false} />
-            <YAxis type="category" dataKey="label" width={72} tick={{ fill: chartTheme.tick, fontSize: 9, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
+            <YAxis type="category" dataKey="label" width={72} tick={{ fill: chartTheme.tick, fontSize: 9, fontFamily: 'IBM Plex Sans' }} axisLine={false} tickLine={false} />
             <Tooltip contentStyle={chartTheme.tooltip} />
             <Bar dataKey="minutes" name={t('examCurves.duration')} radius={[0, 4, 4, 0]}>
               {bars.map((entry) => (

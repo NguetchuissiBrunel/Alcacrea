@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { apiErrorMessage } from '../services/authApi'
 
 interface AsyncState<T> {
   data: T | null
@@ -29,13 +30,7 @@ export function useAsyncData<T>(
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setError(
-            err instanceof Error
-              ? err.message.includes('Unauthorized')
-                ? 'Session expirée — reconnectez-vous'
-                : err.message
-              : 'Une erreur est survenue',
-          )
+          setError(apiErrorMessage(err))
         }
       })
       .finally(() => {

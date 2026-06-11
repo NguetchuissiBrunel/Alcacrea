@@ -11,7 +11,7 @@ export function ExamTypeBadge({ type }: { type: ExamType }) {
   const { examTypeLabels } = useBackendLabels()
   return (
     <span
-      className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-mono border ${styles[type]}`}
+      className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-sans font-semibold border ${styles[type]}`}
     >
       {examTypeLabels[type]}
     </span>

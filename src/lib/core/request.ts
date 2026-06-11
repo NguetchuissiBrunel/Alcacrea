@@ -3,6 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 import { unwrapApiEnvelope } from '../../utils/apiEnvelope';
+import { isAuthApiPath, notifySessionExpired, refreshAccessToken } from '../../services/authSession';
 import { ApiError } from './ApiError';
 import type { ApiRequestOptions } from './ApiRequestOptions';
 import type { ApiResult } from './ApiResult';
@@ -298,9 +299,9 @@ export const request = <T>(config: OpenAPIConfig, options: ApiRequestOptions): C
             const url = getUrl(config, options);
             const formData = getFormData(options);
             const body = getRequestBody(options);
-            const headers = await getHeaders(config, options);
 
-            if (!onCancel.isCancelled) {
+            const runOnce = async (retried: boolean) => {
+                const headers = await getHeaders(config, options);
                 const response = await sendRequest(config, options, url, body, formData, headers, onCancel);
                 const responseBody = await getResponseBody(response);
                 const responseHeader = getResponseHeader(response, options.responseHeader);
@@ -313,9 +314,18 @@ export const request = <T>(config: OpenAPIConfig, options: ApiRequestOptions): C
                     body: responseHeader ?? responseBody,
                 };
 
-                catchErrorCodes(options, result);
+                if (response.status === 401 && !isAuthApiPath(url) && !retried) {
+                    const refreshed = await refreshAccessToken();
+                    if (refreshed) return runOnce(true);
+                    notifySessionExpired();
+                }
 
-                resolve(unwrapApiEnvelope(result.body));
+                catchErrorCodes(options, result);
+                return unwrapApiEnvelope<T>(result.body);
+            };
+
+            if (!onCancel.isCancelled) {
+                resolve(await runOnce(false) as T);
             }
         } catch (error) {
             reject(error);

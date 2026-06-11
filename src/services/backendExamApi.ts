@@ -8,14 +8,17 @@ import {
 } from '../lib'
 import { ApiError } from '../lib/core/ApiError'
 import { API_BASE_URL } from '../config/env'
-import { getAuthToken } from '../lib/setupOpenApi'
+import { authenticatedFetch } from './authSession'
 import type { BackendExamRef, BackendExamType, PdfUploadJob } from '../types/backendExam'
 import {
   extractApiItems,
+  extractPaginationMeta,
   normalizeExamRawRow,
   parseExamRowId,
   unwrapApiEnvelope,
 } from '../utils/apiEnvelope'
+import { extractExamDate, normalizeExamDate } from '../utils/examMeta'
+import { extractPatientNom } from '../utils/patientIdentity'
 import {
   isValidPdfJobId,
   mapRowToPdfJob,
@@ -40,11 +43,9 @@ export async function uploadPdfFile(file: File): Promise<PdfUploadJob> {
   const base = API_BASE_URL || ''
   const form = new FormData()
   form.append('file', file)
-  const token = getAuthToken()
 
-  const res = await fetch(`${base}/api/v1/pdf/upload`, {
+  const res = await authenticatedFetch(`${base}/api/v1/pdf/upload`, {
     method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: form,
   })
 
@@ -97,11 +98,32 @@ export async function pollPdfStatus(pdfFileId: number): Promise<PdfUploadJob> {
   }
 }
 
-export async function listRecentPdfs(limit = 20): Promise<PdfUploadJob[]> {
-  const res = await PdfUploadService.listPdfsApiV1PdfListGet(1, limit)
+export async function listRecentPdfs(limit = 20, status?: PDFStatus): Promise<PdfUploadJob[]> {
+  const res = await PdfUploadService.listPdfsApiV1PdfListGet(1, limit, undefined, status)
   return extractApiItems(res)
-    .map((item) => mapRowToPdfJob(item))
+    .map((item) => mapRowToPdfJob(normalizeExamRawRow(item)))
     .filter((job): job is PdfUploadJob => job !== null)
+}
+
+export async function listAllPdfJobs(limit = 100): Promise<PdfUploadJob[]> {
+  let page = 1
+  const jobs: PdfUploadJob[] = []
+  let total = Number.POSITIVE_INFINITY
+
+  while (page <= 20) {
+    const res = await PdfUploadService.listPdfsApiV1PdfListGet(page, limit)
+    const batch = extractApiItems(res)
+      .map((item) => mapRowToPdfJob(normalizeExamRawRow(item)))
+      .filter((job): job is PdfUploadJob => job !== null)
+
+    jobs.push(...batch)
+    const meta = extractPaginationMeta(res)
+    if (meta.total > 0) total = meta.total
+    if (batch.length === 0 || batch.length < limit || jobs.length >= total) break
+    page += 1
+  }
+
+  return jobs
 }
 
 export async function listAllBackendExams(limit = 50): Promise<BackendExamRef[]> {
@@ -123,8 +145,8 @@ export async function listAllBackendExams(limit = 50): Promise<BackendExamRef[]>
         type,
         id,
         label,
-        patientNom: String(row.patient_nom ?? row.nom_patient ?? ''),
-        date: String(row.date_enregistrement ?? row.date_examen ?? ''),
+        patientNom: extractPatientNom(row),
+        date: normalizeExamDate(extractExamDate(row)),
         severite: String(row.severite ?? row.severite_residuelle ?? ''),
       })
     }

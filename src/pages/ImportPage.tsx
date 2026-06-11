@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom'
 import { CheckCircle2, FileUp, Loader2, RefreshCw, Upload, XCircle } from 'lucide-react'
 import { BulkUploadModal } from '../components/import/BulkUploadModal'
 import { PdfJobStatusBadge, PdfParsingPanel } from '../components/import/PdfParsingPanel'
+import { Header } from '../components/layout/Header'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { useToast } from '../components/ui/Toast'
+import { useBackendLabels } from '../contexts/FilterMetadataContext'
 import { useI18n } from '../contexts/I18nContext'
 import { useAsyncData } from '../hooks/useAsyncData'
 import {
@@ -19,6 +21,7 @@ import { apiErrorMessage } from '../services/authApi'
 import type { PdfUploadJob } from '../types/backendExam'
 import { PDFStatus } from '../lib'
 import { collectPdfsFromDataTransfer, collectPdfsFromFileList, uniqueFiles } from '../utils/collectPdfFiles'
+import { examTypeKeyFromPdfType, getPdfJobDisplay, normalizePdfTypeKey } from '../utils/pdfJobDisplay'
 import { isValidPdfJobId } from '../utils/pdfJobParser'
 
 function statusIcon(status: string) {
@@ -28,7 +31,8 @@ function statusIcon(status: string) {
 }
 
 export function ImportPage() {
-  const { t } = useI18n()
+  const { t, formatDate } = useI18n()
+  const { examTypeLabels } = useBackendLabels()
   const { showToast } = useToast()
   const [dragOver, setDragOver] = useState(false)
   const [reparsing, setReparsing] = useState<number | null>(null)
@@ -124,20 +128,42 @@ export function ImportPage() {
     .filter((job) => isValidPdfJobId(job.id))
     .filter((job, i, arr) => arr.findIndex((j) => j.id === job.id) === i)
 
+  function resolvePdfTypeLabel(pdfType: string | undefined): string | undefined {
+    if (!pdfType) return undefined
+    const key = normalizePdfTypeKey(pdfType)
+    const i18nKey = `import.pdfTypes.${key}`
+    const fromI18n = t(i18nKey)
+    if (fromI18n !== i18nKey) return fromI18n
+    const examKey = examTypeKeyFromPdfType(pdfType)
+    if (examKey && examTypeLabels[examKey]) return examTypeLabels[examKey]
+    return pdfType.replace(/_/g, ' ')
+  }
+
   return (
     <div>
-      <h1 className="font-serif text-4xl text-vellum mb-2">{t('import.title')}</h1>
-      <p className="text-vellum/50 text-sm mb-10 max-w-2xl">{t('import.subtitle')}</p>
+      <Header title={t('import.title')} subtitle={t('import.subtitle')} />
 
       <div
+        role="button"
+        tabIndex={0}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('button')) return
+          filesInputRef.current?.click()
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            filesInputRef.current?.click()
+          }
+        }}
         onDragOver={(e) => {
           e.preventDefault()
           setDragOver(true)
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
-        className={`rounded-[var(--radius-organic)] border-2 border-dashed p-12 text-center transition-colors ${
-          dragOver ? 'border-breath bg-breath/5' : 'border-vellum/15'
+        className={`cursor-pointer rounded-[var(--radius-organic)] border-2 border-dashed p-6 sm:p-8 md:p-12 text-center transition-colors ${
+          dragOver ? 'border-breath bg-breath/5' : 'border-vellum/15 hover:border-breath/40'
         }`}
       >
         <input
@@ -169,7 +195,7 @@ export function ImportPage() {
               <button
                 type="button"
                 onClick={() => filesInputRef.current?.click()}
-                className="text-breath hover:underline font-mono text-sm"
+                className="action-link text-sm"
               >
                 {t('import.selectFiles')}
               </button>
@@ -177,7 +203,7 @@ export function ImportPage() {
               <button
                 type="button"
                 onClick={() => folderInputRef.current?.click()}
-                className="text-breath hover:underline font-mono text-sm"
+                className="action-link text-sm"
               >
                 {t('import.selectFolder')}
               </button>
@@ -218,18 +244,22 @@ export function ImportPage() {
         )}
 
         <ul className="space-y-3">
-          {allJobs.map((job) => (
+          {allJobs.map((job) => {
+            const pdfTypeLabel = resolvePdfTypeLabel(job.pdfType)
+            const display = getPdfJobDisplay(job, pdfTypeLabel, t('import.untitledReport'), formatDate)
+            return (
             <li
               key={job.id}
               className="flex flex-wrap items-center gap-3 p-4 rounded-xl bg-ink border border-vellum/8"
             >
               <FileUp className="w-4 h-4 text-vellum/40 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-vellum text-sm font-mono truncate">{job.fileName || `#${job.id}`}</p>
-                <p className="text-vellum/35 text-xs font-mono mt-0.5">
-                  {job.pdfType && `${job.pdfType} · `}
+                <p className="text-vellum text-sm font-sans font-medium truncate">{display.title}</p>
+                <p className="text-vellum/45 text-xs font-sans mt-0.5 flex flex-wrap items-center gap-x-1.5">
+                  {display.meta && <span>{display.meta}</span>}
+                  {display.meta && <span className="text-vellum/25">·</span>}
                   <PdfJobStatusBadge status={job.status} />
-                  {job.error && ` — ${job.error}`}
+                  {job.error && <span className="text-pulse">— {job.error}</span>}
                 </p>
                 {isPdfProcessing(job.status) && (
                   <div className="mt-2 h-1 rounded-full bg-vellum/10 overflow-hidden max-w-xs">
@@ -241,7 +271,7 @@ export function ImportPage() {
               {job.examRef && (job.status === PDFStatus.DONE || job.status === 'done') && (
                 <Link
                   to={`/exams/${job.examRef.type}/${job.examRef.id}`}
-                  className="text-xs font-mono text-breath hover:underline"
+                  className="action-link"
                 >
                   {t('import.viewExam')}
                 </Link>
@@ -262,13 +292,14 @@ export function ImportPage() {
                       setReparsing(null)
                     }
                   }}
-                  className="text-xs font-mono text-breath/70 hover:text-breath disabled:opacity-40"
+                  className="text-xs font-sans text-breath/70 hover:text-breath disabled:opacity-40"
                 >
                   {t('import.reparse')}
                 </button>
               )}
             </li>
-          ))}
+            )
+          })}
         </ul>
       </div>
     </div>

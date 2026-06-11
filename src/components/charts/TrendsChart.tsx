@@ -26,7 +26,7 @@ export function TrendsChart({ data, showIahThresholds }: TrendsChartProps) {
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={formatted}>
           <CartesianGrid stroke={chartTheme.grid} />
-          <XAxis dataKey="label" tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} />
+          <XAxis dataKey="label" tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'IBM Plex Sans' }} axisLine={false} tickLine={false} />
           <YAxis unit={` ${data.unit}`} tick={{ fill: chartTheme.tick, fontSize: 10 }} axisLine={false} tickLine={false} />
           {showIahThresholds && (
             <>

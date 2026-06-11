@@ -48,7 +48,7 @@ export function PatientEvolutionChart({ patient }: PatientEvolutionChartProps) {
           <CartesianGrid stroke={chartTheme.grid} />
           <XAxis
             dataKey="date"
-            tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'JetBrains Mono' }}
+            tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'IBM Plex Sans' }}
             axisLine={false}
             tickLine={false}
           />
@@ -56,7 +56,7 @@ export function PatientEvolutionChart({ patient }: PatientEvolutionChartProps) {
             <YAxis
               yAxisId="iah"
               orientation="left"
-              tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'JetBrains Mono' }}
+              tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'IBM Plex Sans' }}
               axisLine={false}
               tickLine={false}
               label={{ value: t('metrics.iah'), angle: -90, position: 'insideLeft', fill: chartTheme.tick, fontSize: 10 }}
@@ -67,20 +67,20 @@ export function PatientEvolutionChart({ patient }: PatientEvolutionChartProps) {
               yAxisId="satO2"
               orientation="right"
               domain={[75, 100]}
-              tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'JetBrains Mono' }}
+              tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'IBM Plex Sans' }}
               axisLine={false}
               tickLine={false}
             />
           )}
           {hasVems && !hasIah && (
             <YAxis
-              tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'JetBrains Mono' }}
+              tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'IBM Plex Sans' }}
               axisLine={false}
               tickLine={false}
             />
           )}
           <Tooltip contentStyle={chartTheme.tooltip} />
-          <Legend wrapperStyle={{ fontSize: 11, fontFamily: 'JetBrains Mono' }} />
+          <Legend wrapperStyle={{ fontSize: 11, fontFamily: 'IBM Plex Sans' }} />
           {hasIah && (
             <>
               <Line

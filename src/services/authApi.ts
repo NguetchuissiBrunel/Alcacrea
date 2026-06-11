@@ -1,12 +1,17 @@
 import { AuthenticationService } from '../lib'
 import { ApiError } from '../lib/core/ApiError'
 import { API_BASE_URL } from '../config/env'
-import { getAuthToken, setAuthToken } from '../lib/setupOpenApi'
+import { getAuthToken } from '../lib/setupOpenApi'
 import { unwrapApiEnvelope } from '../utils/apiEnvelope'
-
-const REFRESH_TOKEN_KEY = 'alcacrea-refresh-token'
+import {
+  clearAuthSession,
+  getRefreshToken,
+  refreshAccessToken,
+  storeAuthTokens,
+} from './authSession'
 
 export interface AuthUser {
+  id?: string
   email: string
   fullName: string
   prenom: string
@@ -16,18 +21,23 @@ export interface AuthUser {
 }
 
 function parseName(fullName: string): { prenom: string; nom: string } {
-  const parts = fullName.trim().split(/\s+/)
-  if (parts.length <= 1) return { prenom: '', nom: parts[0] ?? '' }
+  const parts = fullName.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return { prenom: '', nom: '' }
+  if (parts.length === 1) return { prenom: parts[0], nom: '' }
   return { prenom: parts.slice(0, -1).join(' '), nom: parts[parts.length - 1] }
 }
 
 function mapUser(res: Record<string, unknown>): AuthUser {
   const row = unwrapApiEnvelope(res) as Record<string, unknown>
-  const prenom = String(row.prenom ?? '')
-  const nom = String(row.nom ?? '')
+  const prenom = String(row.prenom ?? row.first_name ?? row.firstName ?? row.given_name ?? '')
+  const nom = String(row.nom ?? row.last_name ?? row.lastName ?? row.family_name ?? '')
   const fullName = String(row.full_name ?? row.fullName ?? row.name ?? `${prenom} ${nom}`.trim())
-  const parsed = prenom || nom ? { prenom, nom } : parseName(fullName)
+  const parsed =
+    prenom.trim() || nom.trim()
+      ? { prenom: prenom.trim(), nom: nom.trim() }
+      : parseName(fullName)
   return {
+    id: row.id != null ? String(row.id) : undefined,
     email: String(row.email ?? ''),
     fullName,
     prenom: parsed.prenom,
@@ -47,46 +57,9 @@ function mapUserFromLoginResponse(res: unknown): AuthUser | null {
   return null
 }
 
-function extractToken(res: unknown): string | null {
-  if (typeof res === 'string' && res.length > 10) return res
-  if (!res || typeof res !== 'object') return null
-  const r = res as Record<string, unknown>
-
-  const direct = [r.access_token, r.token, r.accessToken, r.jwt, r.auth_token]
-  for (const value of direct) {
-    if (typeof value === 'string' && value.length > 0) return value
-  }
-
-  for (const key of ['data', 'tokens', 'auth', 'result']) {
-    const nested = r[key]
-    if (nested && typeof nested === 'object') {
-      const n = nested as Record<string, unknown>
-      const token = n.access_token ?? n.token ?? n.accessToken
-      if (typeof token === 'string' && token.length > 0) return token
-    }
-  }
-
-  return null
-}
-
-function extractRefreshToken(res: unknown): string | null {
-  if (!res || typeof res !== 'object') return null
-  const r = res as Record<string, unknown>
-  const refresh = r.refresh_token ?? r.refreshToken
-  return typeof refresh === 'string' && refresh.length > 0 ? refresh : null
-}
-
-function storeTokens(res: unknown) {
-  const token = extractToken(res)
-  if (!token) throw new Error('Token manquant dans la réponse')
-  setAuthToken(token)
-  const refresh = extractRefreshToken(res)
-  if (refresh) localStorage.setItem(REFRESH_TOKEN_KEY, refresh)
-  else localStorage.removeItem(REFRESH_TOKEN_KEY)
-}
-
 export function apiErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {
+    if (err.status === 401) return 'Session expirée — reconnectez-vous'
     const body = err.body as Record<string, unknown> | undefined
     if (body?.detail) {
       if (typeof body.detail === 'string') return body.detail
@@ -129,12 +102,17 @@ async function loginRequest(email: string, password: string): Promise<unknown> {
     )
   }
 
-  return unwrapApiEnvelope(data)
+  const payload = unwrapApiEnvelope(data)
+  try {
+    storeAuthTokens(payload)
+  } catch {
+    storeAuthTokens(data)
+  }
+  return payload
 }
 
 export async function login(email: string, password: string): Promise<AuthUser> {
   const res = await loginRequest(email, password)
-  storeTokens(res)
 
   const fromLogin = mapUserFromLoginResponse(res)
   if (fromLogin) return fromLogin
@@ -142,13 +120,20 @@ export async function login(email: string, password: string): Promise<AuthUser> 
   return getMe()
 }
 
-export async function register(email: string, password: string, fullName: string): Promise<void> {
-  await AuthenticationService.registerApiV1AuthRegisterPost({ email, password, full_name: fullName })
-}
-
 export async function getMe(): Promise<AuthUser> {
-  const res = await AuthenticationService.getMeApiV1AuthMeGet()
-  return mapUser(res as Record<string, unknown>)
+  try {
+    const res = await AuthenticationService.getMeApiV1AuthMeGet()
+    return mapUser(res as Record<string, unknown>)
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      const refreshed = await refreshAccessToken()
+      if (refreshed) {
+        const res = await AuthenticationService.getMeApiV1AuthMeGet()
+        return mapUser(res as Record<string, unknown>)
+      }
+    }
+    throw err
+  }
 }
 
 export async function updateProfile(data: {
@@ -173,10 +158,9 @@ export async function resetPassword(token: string, newPassword: string): Promise
 }
 
 export function logout() {
-  setAuthToken(null)
-  localStorage.removeItem(REFRESH_TOKEN_KEY)
+  clearAuthSession()
 }
 
 export function isAuthenticated(): boolean {
-  return !!getAuthToken()
+  return !!(getAuthToken() || getRefreshToken())
 }

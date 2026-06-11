@@ -31,14 +31,14 @@ export function GenericLineChart({ label, points, unit }: GenericLineChartProps)
             <XAxis
               dataKey="t"
               unit=" min"
-              tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'JetBrains Mono' }}
+              tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'IBM Plex Sans' }}
               axisLine={false}
               tickLine={false}
             />
             <YAxis
               domain={['auto', 'auto']}
               unit={unit ? ` ${unit}` : undefined}
-              tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'JetBrains Mono' }}
+              tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'IBM Plex Sans' }}
               axisLine={false}
               tickLine={false}
             />

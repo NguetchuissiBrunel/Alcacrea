@@ -1,14 +1,15 @@
 export type UserRole = 'praticien' | 'admin'
 
+/** Profil utilisateur tel que renvoyé par GET /api/v1/auth/me */
 export interface User {
-  id: string
+  id?: string
   email: string
-  prenom: string
-  nom: string
-  role: UserRole
-  specialite?: string
-  etablissement?: string
-  createdAt: string
+  full_name?: string
+  prenom?: string
+  nom?: string
+  role?: UserRole
+  created_at?: string
+  createdAt?: string
 }
 
 export interface LoginCredentials {
@@ -16,25 +17,18 @@ export interface LoginCredentials {
   password: string
 }
 
-export interface RegisterCredentials {
-  email: string
-  password: string
-  prenom: string
-  nom: string
-  specialite?: string
-  etablissement?: string
-}
-
+/** Corps PUT /api/v1/auth/me (OpenAPI UserUpdate) */
 export interface UpdateProfilePayload {
-  prenom?: string
-  nom?: string
-  specialite?: string
-  etablissement?: string
+  full_name?: string
+  old_password?: string
+  new_password?: string
 }
 
 export interface AuthResponse {
-  token: string
-  user: User
+  access_token?: string
+  token?: string
+  refresh_token?: string
+  user?: User
 }
 
 export const roleLabels: Record<UserRole, string> = {

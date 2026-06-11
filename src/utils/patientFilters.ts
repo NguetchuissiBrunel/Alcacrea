@@ -1,5 +1,16 @@
 import type { Patient, PatientFilters } from '../types/patient'
 
+export function hasActiveFilters(filters?: PatientFilters): boolean {
+  if (!filters) return false
+  return !!(
+    filters.search?.trim() ||
+    (filters.examType && filters.examType !== 'all') ||
+    (filters.severity && filters.severity !== 'all') ||
+    filters.dateFrom ||
+    filters.dateTo
+  )
+}
+
 export function filterPatients(patients: Patient[], filters: PatientFilters): Patient[] {
   return patients.filter((p) => {
     const fullName = `${p.prenom} ${p.nom}`.toLowerCase()

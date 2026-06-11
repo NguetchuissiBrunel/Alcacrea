@@ -3,13 +3,16 @@ import { GenericLineChart } from '../charts/GenericLineChart'
 import { RespiratoryEventsList } from '../charts/RespiratoryEventsList'
 import { SleepStagesChart } from '../charts/SleepStagesChart'
 import { Spo2CurveChart } from '../charts/Spo2CurveChart'
+import { useBackendLabels } from '../../contexts/FilterMetadataContext'
 import { useI18n } from '../../contexts/I18nContext'
 import type { ExtractedCurve } from '../../types/backendExam'
 import type { FlowVolumeData, RespiratoryEventsData, SleepStagesData, Spo2CurveData } from '../../types/curves'
+import type { ExamMetrics } from '../../types/patient'
 
 interface BackendCurvesPanelProps {
   curves: ExtractedCurve[]
   examId: string
+  scalarMetrics?: ExamMetrics
 }
 
 function toSpo2Data(curve: ExtractedCurve & { kind: 'line' }, examId: string): Spo2CurveData {
@@ -78,11 +81,33 @@ function isSpo2Curve(curve: ExtractedCurve): boolean {
   return id.includes('spo2') || id.includes('sat') || id.includes('oxygen')
 }
 
-export function BackendCurvesPanel({ curves, examId }: BackendCurvesPanelProps) {
+export function BackendCurvesPanel({ curves, examId, scalarMetrics }: BackendCurvesPanelProps) {
   const { t } = useI18n()
+  const { metricLabels } = useBackendLabels()
+
+  const scalarEntries = scalarMetrics
+    ? (Object.entries(scalarMetrics) as [keyof ExamMetrics, number | undefined][]).filter(
+        ([, value]) => value != null,
+      )
+    : []
 
   if (curves.length === 0) {
-    return <p className="text-vellum/40 text-sm font-mono text-center py-12">{t('examCurves.none')}</p>
+    if (scalarEntries.length === 0) {
+      return <p className="text-vellum/40 text-sm font-mono text-center py-12">{t('examCurves.none')}</p>
+    }
+    return (
+      <div className="rounded-[var(--radius-organic)] surface-card p-6">
+        <p className="text-vellum/40 text-sm font-mono mb-6">{t('examCurves.scalarFallback')}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {scalarEntries.map(([key, value]) => (
+            <div key={key} className="criteria-card">
+              <p className="field-label">{metricLabels[key] ?? key}</p>
+              <p className="field-value-lg mt-2">{value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (

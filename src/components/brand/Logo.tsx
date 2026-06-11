@@ -46,8 +46,8 @@ export function Logo({ size = 40, className = '', showWordmark = false }: LogoPr
 
       {showWordmark && (
         <div className="leading-none">
-          <span className="font-serif text-xl text-vellum tracking-tight">{t('brand.name')}</span>
-          <span className="block text-[10px] font-mono tracking-[0.18em] uppercase text-breath/80 mt-0.5">
+          <span className="font-sans font-semibold text-xl text-vellum tracking-tight">{t('brand.name')}</span>
+          <span className="block text-[10px] font-sans font-semibold tracking-[0.14em] uppercase text-breath mt-0.5">
             {t('brand.tagline')}
           </span>
         </div>

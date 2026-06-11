@@ -20,7 +20,7 @@ export function PasswordInput({ label, hideLabel, id, className = '', ...props }
       {label && (
         <label
           htmlFor={inputId}
-          className={hideLabel ? 'sr-only' : 'text-[10px] font-mono uppercase tracking-wider text-vellum/40'}
+          className={hideLabel ? 'sr-only' : 'field-label'}
         >
           {label}
         </label>

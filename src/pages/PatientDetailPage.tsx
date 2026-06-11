@@ -1,4 +1,4 @@
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, ArrowUpRight, FileText, UserX } from 'lucide-react'
 import { PatientEvolutionChart } from '../components/charts/PatientEvolutionChart'
 import { WaveLine } from '../components/brand/WaveLine'
@@ -10,26 +10,19 @@ import { useBackendLabels } from '../contexts/FilterMetadataContext'
 import { useI18n } from '../contexts/I18nContext'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { api } from '../services/api'
-import type { ExamMetrics, Patient } from '../types/patient'
-import { patientIdsMatch } from '../services/backendMapper'
+import type { ExamMetrics } from '../types/patient'
 
 export function PatientDetailPage() {
   const { t, formatDate } = useI18n()
   const { metricLabels } = useBackendLabels()
   const { id } = useParams<{ id: string }>()
-  const location = useLocation()
-  const statePatient = (location.state as { patient?: Patient } | null)?.patient
-  const { data: fetchedPatient, loading, error, retry } = useAsyncData(
+  const { data: patient, loading, error, retry } = useAsyncData(
     () => (id ? api.getPatient(id) : Promise.resolve(null)),
     [id],
   )
 
-  const patient =
-    fetchedPatient ??
-    (id && statePatient && patientIdsMatch(statePatient.id, id) ? statePatient : null)
-
-  if (loading && !patient) return <PatientDetailSkeleton />
-  if (error && !patient) return <ErrorMessage message={error} onRetry={retry} />
+  if (loading) return <PatientDetailSkeleton />
+  if (error) return <ErrorMessage message={error} onRetry={retry} />
 
   if (!patient) {
     return (
@@ -54,11 +47,11 @@ export function PatientDetailPage() {
         {t('patientDetail.back')}
       </Link>
 
-      <div className="relative overflow-hidden rounded-[2rem] dossier-surface p-10 pt-12 mb-10">
+      <div className="relative overflow-hidden rounded-[1.5rem] sm:rounded-[2rem] dossier-surface p-6 sm:p-8 md:p-10 pt-10 sm:pt-12 mb-8 sm:mb-10">
         <div className="dossier-tab" aria-hidden="true" />
         <div className="relative z-10">
           <p className="font-mono text-[10px] text-vellum-ink/40 uppercase tracking-[0.2em]">{t('patientDetail.fileLabel')}</p>
-          <h1 className="font-serif text-5xl text-vellum-ink mt-3 leading-none">
+          <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl text-vellum-ink mt-3 leading-none break-words">
             <span className="font-sans font-light text-vellum-ink/75">{patient.prenom}</span>
             <br />
             <span className="uppercase tracking-wide">{patient.nom}</span>
@@ -82,18 +75,18 @@ export function PatientDetailPage() {
 
       <div className="space-y-4">
         {sortedExams.map((exam) => (
-          <div key={exam.id} className="rounded-2xl surface-card p-6">
-            <div className="flex flex-wrap items-center gap-3 mb-4">
+          <div key={exam.id} className="rounded-2xl surface-card p-4 sm:p-6">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-4">
               <ExamTypeBadge type={exam.type} />
               <SeverityBadge severity={exam.severity} />
-              <span className="text-vellum/30 text-xs font-mono ml-auto">{formatDate(exam.date)}</span>
+              <span className="text-vellum/30 text-xs font-mono sm:ml-auto">{formatDate(exam.date)}</span>
               <Link
                 to={
                   exam.backendRef
                     ? `/exams/${exam.backendRef.type}/${exam.backendRef.id}`
                     : `/patients/${patient.id}/exams/${exam.id}`
                 }
-                className="inline-flex items-center gap-1 text-xs font-mono text-breath/70 hover:text-breath transition-colors"
+                className="action-link"
               >
                 {t('patientDetail.viewCurves')}
                 <ArrowUpRight className="w-3.5 h-3.5" />
@@ -107,9 +100,9 @@ export function PatientDetailPage() {
               {(Object.entries(exam.metrics) as [keyof ExamMetrics, number | undefined][]).map(
                 ([key, value]) =>
                   value != null && (
-                    <div key={key} className="p-3 rounded-xl bg-ink">
-                      <p className="text-vellum/30 text-xs font-mono uppercase">{metricLabels[key] ?? key}</p>
-                      <p className="text-vellum font-mono text-lg mt-1">{value}</p>
+                    <div key={key} className="criteria-card">
+                      <p className="field-label">{metricLabels[key] ?? key}</p>
+                      <p className="field-value-lg mt-2">{value}</p>
                     </div>
                   ),
               )}

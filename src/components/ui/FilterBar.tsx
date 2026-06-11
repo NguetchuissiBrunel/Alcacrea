@@ -33,7 +33,7 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
   if (loading || !metadata) {
     return (
       <div
-        className="flex flex-wrap items-end gap-3 p-4 rounded-2xl surface-card animate-pulse"
+        className="flex flex-wrap items-end gap-3 p-4 rounded-2xl surface-card filter-panel animate-pulse"
         role="search"
         aria-label={t('filters.aria')}
         aria-busy="true"
@@ -54,18 +54,18 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
 
   return (
     <div
-      className="flex flex-wrap items-end gap-3 p-4 rounded-2xl surface-card"
+      className="flex flex-wrap items-end gap-3 p-4 sm:p-5 rounded-2xl surface-card filter-panel"
       role="search"
       aria-label={t('filters.aria')}
     >
-      <SlidersHorizontal className="w-4 h-4 text-vellum/30 shrink-0 mb-2.5" aria-hidden="true" />
+      <SlidersHorizontal className="w-4 h-4 text-clinical-label shrink-0 mb-2.5" aria-hidden="true" />
 
       {metadata.fields.map((field) => {
         if (field.type === 'search') {
           return (
-            <div key={field.key} className="relative flex-1 min-w-[200px]">
+            <div key={field.key} className="relative flex-1 min-w-0 basis-full sm:min-w-[200px] sm:basis-auto">
               <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-vellum/30 pointer-events-none"
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-clinical-muted pointer-events-none"
                 aria-hidden="true"
               />
               <Input

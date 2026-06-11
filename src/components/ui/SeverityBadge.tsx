@@ -12,7 +12,7 @@ export function SeverityBadge({ severity }: { severity: Severity }) {
   const { severityLabels } = useBackendLabels()
   return (
     <span
-      className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-mono border ${styles[severity]}`}
+      className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-sans font-semibold border ${styles[severity]}`}
     >
       {severityLabels[severity]}
     </span>

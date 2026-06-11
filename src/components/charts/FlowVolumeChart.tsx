@@ -24,7 +24,7 @@ export function FlowVolumeChart({ data }: FlowVolumeChartProps) {
             <XAxis
               dataKey="volume"
               unit=" L"
-              tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'JetBrains Mono' }}
+              tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'IBM Plex Sans' }}
               axisLine={false}
               tickLine={false}
               label={{ value: t('examCurves.volume'), position: 'bottom', fill: chartTheme.tick, fontSize: 10 }}
@@ -32,7 +32,7 @@ export function FlowVolumeChart({ data }: FlowVolumeChartProps) {
             <YAxis
               dataKey="flow"
               unit=" L/s"
-              tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'JetBrains Mono' }}
+              tick={{ fill: chartTheme.tick, fontSize: 10, fontFamily: 'IBM Plex Sans' }}
               axisLine={false}
               tickLine={false}
             />

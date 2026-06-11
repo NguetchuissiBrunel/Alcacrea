@@ -10,7 +10,7 @@ export function AuthLayout() {
   const { t } = useI18n()
 
   return (
-    <div className="min-h-screen wave-mesh flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-screen wave-mesh flex flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12 safe-area-pt safe-area-pb">
       <div className="brand-thread" />
       <BackgroundWaves />
 
@@ -25,7 +25,7 @@ export function AuthLayout() {
           <WaveLine className="w-32 h-2.5 mt-5" variant="dream" />
         </div>
 
-        <div className="rounded-[var(--radius-organic)] surface-card p-8 md:p-10">
+        <div className="rounded-[var(--radius-organic)] surface-card p-6 sm:p-8 md:p-10">
           <Outlet />
         </div>
 

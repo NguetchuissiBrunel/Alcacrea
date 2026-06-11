@@ -85,7 +85,7 @@ export function Sidebar() {
       </aside>
 
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-stretch px-2 py-2.5 bg-ink-soft/95 backdrop-blur-md border-t border-vellum/8 safe-area-pb"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-stretch gap-0.5 px-1.5 sm:px-2 py-2 bg-ink-soft/95 backdrop-blur-md border-t border-vellum/8 safe-area-pb"
         aria-label={t('nav.main')}
       >
         {mainNavItems.map(({ to, icon: Icon, label, shortLabel }) => (
@@ -97,7 +97,7 @@ export function Sidebar() {
             className={({ isActive }) => navLinkClass(isActive, true)}
           >
             <Icon className="w-5 h-5" strokeWidth={1.5} aria-hidden="true" />
-            <span className="text-[10px] font-mono tracking-wide truncate max-w-full px-1">
+            <span className="text-[9px] sm:text-[10px] font-mono tracking-wide truncate max-w-full px-0.5">
               {shortLabel}
             </span>
           </NavLink>

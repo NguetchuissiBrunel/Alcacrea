@@ -6,7 +6,9 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 const baseClass =
-  'w-full px-4 py-2.5 rounded-xl bg-ink border border-vellum/10 text-vellum text-sm transition-colors placeholder:text-vellum/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-breath/40 focus-visible:border-breath/50'
+  'w-full px-4 py-2.5 rounded-xl bg-ink border border-clinical-border/50 text-clinical-value text-sm font-medium transition-colors placeholder:text-clinical-muted/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-breath/50 focus-visible:border-breath/60'
+
+const labelClass = 'field-label'
 
 export function Input({ label, hideLabel, id, className = '', ...props }: InputProps) {
   const inputId = id ?? label?.toLowerCase().replace(/\s+/g, '-')
@@ -16,7 +18,7 @@ export function Input({ label, hideLabel, id, className = '', ...props }: InputP
       {label && (
         <label
           htmlFor={inputId}
-          className={hideLabel ? 'sr-only' : 'text-[10px] font-mono uppercase tracking-wider text-vellum/40'}
+          className={hideLabel ? 'sr-only' : labelClass}
         >
           {label}
         </label>
