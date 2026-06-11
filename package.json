@@ -1,0 +1,32 @@
+{
+  "name": "alcacrea",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "gen:api": "openapi-codegen gen medicalBackend",
+    "gen:api:update": "curl.exe -s https://parser.datapipe.duckdns.org/openapi.json -o openapi/medical-backend.json && openapi-codegen gen medicalBackend"
+  },
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.511.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.2",
+    "recharts": "^2.15.3"
+  },
+  "devDependencies": {
+    "@openapi-codegen/cli": "^3.1.0",
+    "@openapi-codegen/typescript": "^11.0.1",
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.5",
+    "@vitejs/plugin-react": "^4.5.0",
+    "tailwindcss": "^4.3.0",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5"
+  }
+}

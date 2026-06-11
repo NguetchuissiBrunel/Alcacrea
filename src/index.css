@@ -1,0 +1,386 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Instrument Serif", Georgia, serif;
+  --font-sans: "Sora", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --color-ink: #ede8e1;
+  --color-ink-soft: #f3efe8;
+  --color-ink-muted: #e4ddd4;
+
+  --color-vellum: #524e48;
+  --color-vellum-deep: #e8e2d9;
+  --color-vellum-ink: #5c5852;
+
+  --color-pulse: #c9958a;
+  --color-pulse-soft: #dbb5ad;
+  --color-pulse-deep: #b08076;
+  --color-breath: #7ab5ae;
+  --color-breath-soft: #9ecbc5;
+  --color-dream: #a899be;
+  --color-dream-soft: #c2b8d4;
+  --color-gold: #c9b87a;
+  --color-gold-soft: #ddd09e;
+
+  --radius-organic: 2rem 0.5rem 2rem 0.5rem;
+  --radius-pill: 9999px;
+}
+
+html.dark {
+  color-scheme: dark;
+
+  --color-ink: #1a1917;
+  --color-ink-soft: #232220;
+  --color-ink-muted: #2c2a27;
+
+  --color-vellum: #e8e4dc;
+  --color-vellum-deep: #2a2826;
+  --color-vellum-ink: #d8d4cc;
+
+  --color-breath: #7ecbc3;
+  --color-breath-soft: #5a9e97;
+  --color-dream: #b5a8d4;
+  --color-dream-soft: #8a7aad;
+  --color-gold: #dfc98a;
+  --color-gold-soft: #a89560;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-ink);
+  color: var(--color-vellum);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-breath) 25%, transparent);
+  color: var(--color-vellum);
+}
+
+/* ── Fond signature ── */
+.wave-mesh {
+  position: relative;
+  background-color: var(--color-ink);
+  background-image:
+    radial-gradient(ellipse 90% 60% at 10% 20%, color-mix(in srgb, var(--color-dream) 4%, transparent), transparent),
+    radial-gradient(ellipse 70% 50% at 90% 10%, color-mix(in srgb, var(--color-breath) 3%, transparent), transparent),
+    radial-gradient(ellipse 60% 70% at 70% 90%, color-mix(in srgb, var(--color-gold) 3%, transparent), transparent);
+}
+
+html.dark .wave-mesh::before {
+  opacity: 0.2;
+}
+
+.wave-mesh::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  z-index: 1;
+}
+
+/* ── Vagues d'arrière-plan ── */
+.wave-bg-layers {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.wave-layer {
+  position: absolute;
+  left: -5%;
+  width: 110%;
+  pointer-events: none;
+}
+
+.wave-layer-fill-1 {
+  top: 12%;
+  height: 38vh;
+  opacity: 0.14;
+  animation: wave-drift 14s ease-in-out infinite;
+}
+
+.wave-layer-fill-2 {
+  top: 48%;
+  height: 32vh;
+  opacity: 0.11;
+  animation: wave-drift-reverse 18s ease-in-out infinite;
+}
+
+.wave-layer-line-1 {
+  top: 22%;
+  height: 18vh;
+  opacity: 0.22;
+  animation: wave-drift 12s ease-in-out infinite;
+}
+
+.wave-layer-line-2 {
+  top: 55%;
+  height: 14vh;
+  opacity: 0.19;
+  animation: wave-drift-reverse 10s ease-in-out infinite;
+}
+
+.wave-layer-line-3 {
+  top: 78%;
+  height: 12vh;
+  opacity: 0.2;
+  animation: wave-drift 16s ease-in-out infinite;
+}
+
+.wave-layer-bottom {
+  bottom: 0;
+  top: auto;
+  height: 24vh;
+  opacity: 0.18;
+  animation: wave-drift-reverse 20s ease-in-out infinite;
+}
+
+.brand-thread {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 60;
+  background: linear-gradient(
+    90deg,
+    var(--color-breath) 0%,
+    var(--color-dream) 45%,
+    var(--color-gold) 75%,
+    var(--color-pulse) 100%
+  );
+  opacity: 0.35;
+}
+
+/* ── Surfaces ── */
+.surface-card {
+  position: relative;
+  background: color-mix(in srgb, var(--color-ink-soft) 88%, var(--color-ink));
+  border: 1px solid color-mix(in srgb, var(--color-vellum) 4%, transparent);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--color-vellum) 1.5%, transparent),
+    0 4px 16px -8px color-mix(in srgb, var(--color-breath) 5%, transparent);
+}
+
+.surface-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 1.5rem;
+  right: 1.5rem;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-breath) 18%, transparent) 30%,
+    color-mix(in srgb, var(--color-dream) 14%, transparent) 70%,
+    transparent
+  );
+  opacity: 0.55;
+}
+
+.dossier-surface {
+  position: relative;
+  background: linear-gradient(
+    168deg,
+    #f0ebe4 0%,
+    #e8e2d9 55%,
+    color-mix(in srgb, #e8e2d9 85%, var(--color-gold-soft)) 100%
+  );
+  color: var(--color-vellum-ink);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--color-gold) 12%, transparent),
+    0 8px 24px -10px color-mix(in srgb, var(--color-breath) 6%, transparent);
+}
+
+.dossier-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 27px,
+    color-mix(in srgb, var(--color-breath) 5%, transparent) 27px,
+    color-mix(in srgb, var(--color-breath) 5%, transparent) 28px
+  );
+  pointer-events: none;
+  opacity: 0.4;
+  border-radius: inherit;
+}
+
+.dossier-tab {
+  position: absolute;
+  top: 0;
+  left: 1.5rem;
+  width: 4.5rem;
+  height: 1.25rem;
+  background: color-mix(in srgb, var(--color-breath) 10%, var(--color-ink-soft));
+  border-radius: 0 0 0.5rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--color-breath) 14%, transparent);
+  border-top: none;
+}
+
+html.dark .dossier-surface {
+  background: linear-gradient(
+    168deg,
+    #2a2826 0%,
+    #232220 55%,
+    color-mix(in srgb, #232220 85%, var(--color-gold-soft)) 100%
+  );
+}
+
+/* ── Titres signature ── */
+.title-serif {
+  font-family: var(--font-serif);
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+}
+
+.title-accent {
+  font-family: var(--font-serif);
+  font-style: italic;
+  color: var(--color-breath);
+}
+
+/* ── Cartes stats ── */
+.stat-glow-breath { --stat-glow: var(--color-breath); }
+.stat-glow-pulse  { --stat-glow: var(--color-pulse); }
+.stat-glow-dream  { --stat-glow: var(--color-dream); }
+.stat-glow-gold   { --stat-glow: var(--color-gold); }
+
+.stat-card-accent::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 1.5rem;
+  width: 3rem;
+  height: 2px;
+  background: var(--stat-glow);
+  opacity: 0.4;
+  border-radius: 1px;
+}
+
+/* ── Navigation ── */
+.nav-active-glow {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-breath) 15%, transparent),
+    0 4px 14px color-mix(in srgb, var(--color-breath) 12%, transparent);
+}
+
+/* ── Animations ── */
+@keyframes wave-drift {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-24px); }
+}
+
+@keyframes wave-drift-reverse {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(20px); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-wave-drift {
+  animation: wave-drift 8s ease-in-out infinite;
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave-layer-fill-1,
+  .wave-layer-fill-2,
+  .wave-layer-line-1,
+  .wave-layer-line-2,
+  .wave-layer-line-3,
+  .wave-layer-bottom,
+  .animate-wave-drift,
+  .animate-fade-up {
+    animation: none !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 1rem;
+  z-index: 200;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.75rem;
+  background: var(--color-vellum);
+  color: var(--color-ink);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: top 0.2s;
+}
+
+.skip-link:focus {
+  top: 1rem;
+  outline: 2px solid var(--color-breath);
+  outline-offset: 2px;
+}
+
+.safe-area-pb {
+  padding-bottom: max(0.625rem, env(safe-area-inset-bottom));
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-ink);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-ink-muted);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-breath-soft);
+}
+
+.recharts-tooltip-wrapper {
+  outline: none !important;
+}
